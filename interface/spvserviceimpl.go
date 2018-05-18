@@ -1,18 +1,18 @@
 package _interface
 
 import (
-	"os"
 	"errors"
+	"os"
 	"os/signal"
 
 	"github.com/elastos/Elastos.ELA.SPV/log"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
-	"github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 	"github.com/elastos/Elastos.ELA.SPV/spvwallet"
+	"github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 
+	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
-	"github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 type SPVServiceImpl struct {
@@ -128,8 +128,9 @@ func (service *SPVServiceImpl) Start() error {
 
 	// Register accounts
 	if len(service.accounts) == 0 {
-		return errors.New("No account registered")
+		log.Warn("No account registered")
 	}
+
 	for _, account := range service.accounts {
 		service.DataStore().Addrs().Put(account, RegisteredAccountScript, db.TypeNotify)
 	}
