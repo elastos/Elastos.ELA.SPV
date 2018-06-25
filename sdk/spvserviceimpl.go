@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -203,6 +202,10 @@ func (s *SPVServiceImpl) needSync() bool {
 func (s *SPVServiceImpl) syncBlocks() {
 	// Check if blockchain need sync
 	if s.needSync() {
+		// Return if current download not finished
+		if !s.downloading.finished() {
+			return
+		}
 		// Return if already in syncing
 		if s.chain.IsSyncing() {
 			return
@@ -314,12 +317,7 @@ func (s *SPVServiceImpl) OnMerkleBlock(peer *net.Peer, block *msg.MerkleBlock) e
 		queueHash := <-s.blockQueue
 		if !blockHash.IsEqual(queueHash) {
 			s.changeSyncPeerAndRestart()
-			return fmt.Errorf("Peer%d is sending us blocks out of order", peer.ID())
-		}
-
-		if !s.downloading.finished() {
-			s.changeSyncPeerAndRestart()
-			return fmt.Errorf("Peer%d is sending block with download block not finished", peer.ID())
+			return fmt.Errorf("peer %d is sending us blocks out of order", peer.ID())
 		}
 
 		// Request next block list
@@ -330,7 +328,7 @@ func (s *SPVServiceImpl) OnMerkleBlock(peer *net.Peer, block *msg.MerkleBlock) e
 
 	txIds, err := bloom.CheckMerkleBlock(*block)
 	if err != nil {
-		return errors.New("Invalid merkle block received: " + err.Error())
+		return fmt.Errorf("invalid merkleblock received %s", err.Error())
 	}
 
 	// Save block as download block
