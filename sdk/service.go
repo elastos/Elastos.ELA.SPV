@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	defaultDataDir        = "./"
 	TxExpireTime          = time.Hour * 24
 	TxRebroadcastDuration = time.Minute * 15
 )
@@ -103,6 +104,10 @@ func newService(cfg *Config) (*service, error) {
 		service.makeEmptyMessage,
 		func() uint64 { return uint64(chain.BestHeight()) },
 	)
+	serverCfg.DataDir = defaultDataDir
+	if len(cfg.DataDir) > 0 {
+		serverCfg.DataDir = cfg.DataDir
+	}
 	serverCfg.MaxPeers = maxPeers
 	serverCfg.DisableListen = true
 	serverCfg.DisableRelayTx = true
