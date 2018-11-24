@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA.SPV/database"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
@@ -18,10 +19,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/http/jsonrpc"
 	httputil "github.com/elastos/Elastos.ELA.Utility/http/util"
 	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/filter"
 )
 
 const (
-	MaxPeers        = 12
+	MaxPeers = 12
 )
 
 var ErrInvalidParameter = fmt.Errorf("invalide parameter")
@@ -76,7 +78,8 @@ func (w *spvwallet) Close() error {
 	return w.db.Close()
 }
 
-func (w *spvwallet) GetFilterData() ([]*common.Uint168, []*util.OutPoint) {
+func (w *spvwallet) GetFilter() filter.TxFilter {
+	addrs := w.getAddrFilter().GetAddrs()
 	utxos, err := w.db.UTXOs().GetAll()
 	if err != nil {
 		waltlog.Debugf("GetAll UTXOs error: %v", err)
@@ -85,15 +88,9 @@ func (w *spvwallet) GetFilterData() ([]*common.Uint168, []*util.OutPoint) {
 	if err != nil {
 		waltlog.Debugf("GetAll STXOs error: %v", err)
 	}
-	outpoints := make([]*util.OutPoint, 0, len(utxos)+len(stxos))
-	for _, utxo := range utxos {
-		outpoints = append(outpoints, utxo.Op)
-	}
-	for _, stxo := range stxos {
-		outpoints = append(outpoints, stxo.Op)
-	}
-
-	return w.getAddrFilter().GetAddrs(), outpoints
+	elements := uint32(len(addrs) + len(utxos) + len(stxos))
+	filter := bloom.NewFilter(elements, 0, 0)
+	return bloom.NewTxFilter(filter)
 }
 
 func (w *spvwallet) NotifyNewAddress(hash []byte) {
@@ -301,16 +298,16 @@ func NewWallet() (*spvwallet, error) {
 	// Initialize spv service
 	w.IService, err = sdk.NewService(
 		&sdk.Config{
-			Magic:           config.Magic,
-			SeedList:        config.SeedList,
-			DefaultPort:     config.DefaultPort,
-			MaxPeers:        MaxPeers,
-			GenesisHeader:   GenesisHeader(),
-			ChainStore:      chainStore,
-			NewTransaction:  newTransaction,
-			NewBlockHeader:  newBlockHeader,
-			GetFilterData:   w.GetFilterData,
-			StateNotifier:   &w,
+			Magic:          config.Magic,
+			SeedList:       config.SeedList,
+			DefaultPort:    config.DefaultPort,
+			MaxPeers:       MaxPeers,
+			GenesisHeader:  GenesisHeader(),
+			ChainStore:     chainStore,
+			NewTransaction: newTransaction,
+			NewBlockHeader: newBlockHeader,
+			GetFilter:      w.GetFilter,
+			StateNotifier:  &w,
 		})
 	if err != nil {
 		return nil, err

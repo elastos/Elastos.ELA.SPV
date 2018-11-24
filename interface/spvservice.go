@@ -16,6 +16,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
 	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/filter"
 )
 
 const defaultDataDir = "./data_spv"
@@ -81,7 +82,7 @@ func newSpvService(cfg *Config) (*spvservice, error) {
 			return &core.Transaction{}
 		},
 		NewBlockHeader: newBlockHeader,
-		GetFilterData:  service.GetFilterData,
+		GetFilter:      service.GetFilter,
 		StateNotifier:  service,
 	}
 
@@ -175,13 +176,13 @@ func (s *spvservice) HeaderStore() database.Headers {
 	return s.headers
 }
 
-func (s *spvservice) GetFilterData() ([]*common.Uint168, []*util.OutPoint) {
-	ops, err := s.db.Ops().GetAll()
-	if err != nil {
-		log.Error("[SPV_SERVICE] GetData error ", err)
+func (s *spvservice) GetFilter() filter.TxFilter {
+	f := filter.TypeAddrFilter{}
+	for _, l := range s.listeners {
+		addr, _ := common.Uint168FromAddress(l.Address())
+		f.Append(l.Type(), addr)
 	}
-
-	return s.db.Addrs().GetAll(), ops
+	return &f
 }
 
 // Batch returns a TxBatch instance for transactions batch

@@ -7,11 +7,9 @@ idea/
 build/
 *.patch
 .idea/
-GoOnchain.iml
 .DS_Store
 *.orig
 *.rej
-Log
 *.log
 *.dat
 *.db
@@ -21,6 +19,7 @@ Log
 *.cache
 *.lock
 *.json
+HEADER/
 vendor/
 ela-wallet
 service

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/elastos/Elastos.ELA.SPV/blockchain"
-	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	speer "github.com/elastos/Elastos.ELA.SPV/peer"
 	"github.com/elastos/Elastos.ELA.SPV/sync"
 	"github.com/elastos/Elastos.ELA.SPV/util"
@@ -16,6 +15,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/server"
+	"github.com/elastos/Elastos.ELA/filter"
 )
 
 const (
@@ -134,20 +134,8 @@ func (s *service) start() {
 	go s.txHandler()
 }
 
-func (s *service) updateFilter() *bloom.Filter {
-	addresses, outpoints := s.cfg.GetFilterData()
-	elements := uint32(len(addresses) + len(outpoints))
-
-	filter := bloom.NewFilter(elements, 0, 0)
-	for _, address := range addresses {
-		filter.Add(address.Bytes())
-	}
-
-	for _, op := range outpoints {
-		filter.Add(op.Bytes())
-	}
-
-	return filter
+func (s *service) updateFilter() filter.TxFilter {
+	return s.cfg.GetFilter()
 }
 
 func (s *service) makeEmptyMessage(cmd string) (p2p.Message, error) {
@@ -440,8 +428,8 @@ func (s *service) UpdateFilter() {
 	// Update bloom filter
 	filter := s.updateFilter()
 
-	// Broadcast filterload message to connected peers.
-	s.IServer.BroadcastMessage(filter.GetFilterLoadMsg())
+	// Broadcast txfilter message to connected peers.
+	s.IServer.BroadcastMessage(filter.ToMsg())
 }
 
 func (s *service) Start() {

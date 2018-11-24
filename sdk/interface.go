@@ -4,7 +4,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/database"
 	"github.com/elastos/Elastos.ELA.SPV/util"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/filter"
 )
 
 /*
@@ -83,15 +83,8 @@ type Config struct {
 	// NewBlockHeader create a new block header instance.
 	NewBlockHeader func() util.BlockHeader
 
-	// GetFilterData() returns two arguments.
-	// First arguments are all addresses stored in your data store.
-	// Second arguments are all balance references to those addresses stored in your data store,
-	// including UTXO(Unspent Transaction Output)s and STXO(Spent Transaction Output)s.
-	// Outpoint is a data structure include a transaction ID and output index. It indicates the
-	// reference of an transaction output. If an address ever received an transaction output,
-	// there will be the outpoint reference to it. Any time you want to spend the balance of an
-	// address, you must provide the reference of the balance which is an outpoint in the transaction input.
-	GetFilterData func() ([]*common.Uint168, []*util.OutPoint)
+	// GetFilter() returns the transaction filter implemented by the SPV client.
+	GetFilter func() filter.TxFilter
 
 	// StateNotifier is an optional config, if you don't want to receive state changes of transactions
 	// or blocks, just keep it blank.

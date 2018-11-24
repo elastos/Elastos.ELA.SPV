@@ -226,9 +226,7 @@ func (sm *SyncManager) getSyncCandidates() []*peer.Peer {
 
 // updateBloomFilter update the bloom filter and send it to the given peer.
 func (sm *SyncManager) updateBloomFilter(p *peer.Peer) {
-	msg := sm.cfg.UpdateFilter().GetFilterLoadMsg()
-	log.Debugf("Update bloom filter %v, %d, %d", msg.Filter, msg.Tweak, msg.HashFuncs)
-	p.QueueMessage(msg, nil)
+	p.QueueMessage(sm.cfg.UpdateFilter().ToMsg(), nil)
 }
 
 // handleNewPeerMsg deals with new peers that have signalled they may
