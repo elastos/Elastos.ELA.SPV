@@ -107,7 +107,7 @@ func NewSPVServiceImpl(client SPVClient, foundation string, headerStore store.He
 		SPVClient:   client,
 		chain:       chain,
 		handler:     handler,
-		syncControl: make(chan p2p.Message, 1),
+		syncControl: make(chan p2p.Message),
 	}
 
 	// Set SPV handler implement
@@ -212,10 +212,14 @@ func (s *SPVServiceImpl) keepUpdate() {
 		// Check if blockchain need sync
 		if s.needSync() {
 			// Start syncing progress
-			s.startSyncing()
+			if !s.chain.IsSyncing() {
+				s.startSyncing()
+			}
 		} else {
 			// Stop syncing progress
-			s.stopSyncing()
+			if s.chain.IsSyncing() {
+				s.stopSyncing()
+			}
 		}
 	}
 }
@@ -237,10 +241,6 @@ func (s *SPVServiceImpl) needSync() bool {
 }
 
 func (s *SPVServiceImpl) startSyncing() {
-	// Return if already in syncing
-	if s.chain.IsSyncing() {
-		return
-	}
 	// Get sync peer
 	syncPeer := s.PeerManager().GetSyncPeer()
 	if syncPeer == nil {
@@ -251,21 +251,32 @@ func (s *SPVServiceImpl) startSyncing() {
 	// Set blockchain state to syncing
 	s.chain.SetChainState(SYNCING)
 
+	// Update bloom filter
+	filter := BuildBloomFilter(s.handler.GetData())
+	syncPeer.Send(filter.GetFilterLoadMsg())
+
 	// Get blocks from sync peer
 	s.getBlocks(syncPeer)
 }
 
 func (s *SPVServiceImpl) stopSyncing() {
-	// Return if not in syncing
-	if !s.chain.IsSyncing() {
-		return
-	}
 	// Set blockchain state to waiting
 	s.chain.SetChainState(WAITING)
 	// Clear sync peer
 	s.PeerManager().ClearSyncPeer()
-	// Update bloom filter
-	s.ReloadFilter()
+}
+
+func (s *SPVServiceImpl) changeSyncPeer() {
+	log.Debug("Change sync peer")
+	syncPeer := s.PeerManager().GetSyncPeer()
+	if syncPeer != nil {
+		// Disconnect current sync peer.
+		s.PeerManager().ClearSyncPeer()
+		s.PeerManager().PeerDisconnected(syncPeer)
+
+		// Restart syncing
+		s.startSyncing()
+	}
 }
 
 func (s *SPVServiceImpl) getBlocks(peer *net.Peer) {
@@ -282,7 +293,6 @@ func (s *SPVServiceImpl) syncHandler() {
 	// exceeded the expected deadline and disconnect the peer due to
 	// stalling.
 	syncTicker := time.NewTicker(SyncTickInterval)
-	defer syncTicker.Stop()
 
 	// pendingResponses tracks the expected responses.
 	pendingResponses := make(map[string]struct{})
@@ -321,7 +331,8 @@ func (s *SPVServiceImpl) syncHandler() {
 
 			case *msg.NotFound:
 				// NotFound should not received from sync peer
-				goto QUIT
+				pendingResponses = make(map[string]struct{})
+				s.changeSyncPeer()
 			}
 
 		case <-syncTicker.C:
@@ -343,25 +354,9 @@ func (s *SPVServiceImpl) syncHandler() {
 
 			log.Debugf("peer %v appears to be stalled or misbehaving,"+
 				" response timeout -- disconnecting", s.PeerManager().GetSyncPeer())
-			goto QUIT
+			pendingResponses = make(map[string]struct{})
+			s.changeSyncPeer()
 		}
-	}
-
-QUIT:
-	s.changeSyncPeer()
-	go s.syncHandler()
-}
-
-func (s *SPVServiceImpl) changeSyncPeer() {
-	log.Debug("Change sync peer")
-	syncPeer := s.PeerManager().GetSyncPeer()
-	if syncPeer != nil {
-		// Disconnect current sync peer
-		s.PeerManager().PeerDisconnected(syncPeer)
-
-		// Restart
-		s.stopSyncing()
-		s.startSyncing()
 	}
 }
 
@@ -381,7 +376,7 @@ func (h *spvMsgHandler) isSyncPeer() bool {
 }
 
 func (h *spvMsgHandler) syncControl(msg p2p.Message) {
-	if h.isSyncPeer() {
+	if h.isSyncPeer() && h.peer.State() == p2p.ESTABLISH {
 		h.service.syncControl <- msg
 	}
 }
