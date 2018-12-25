@@ -13,9 +13,9 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Utility/elalog"
 	"github.com/elastos/Elastos.ELA.Utility/http/jsonrpc"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/addrmgr"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/connmgr"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/server"
+	"github.com/elastos/Elastos.ELA/p2p/addrmgr"
+	"github.com/elastos/Elastos.ELA/p2p/connmgr"
+	"github.com/elastos/Elastos.ELA/p2p/server"
 )
 
 const LogPath = "./logs-spv/"
@@ -26,10 +26,10 @@ const LogPath = "./logs-spv/"
 var (
 	fileWriter = elalog.NewFileWriter(
 		LogPath,
-		config.MaxPerLogSize,
-		config.MaxLogsSize,
+		cfg.MaxPerLogSize,
+		cfg.MaxLogsSize,
 	)
-	level   = elalog.Level(config.PrintLevel)
+	level   = elalog.Level(cfg.PrintLevel)
 	backend = elalog.NewBackend(io.MultiWriter(os.Stdout, fileWriter),
 		elalog.Llongfile)
 
