@@ -8,9 +8,9 @@ import:
 - package: github.com/syndtr/goleveldb/leveldb
 - package: github.com/cevaris/ordered_map
 - package: github.com/elastos/Elastos.ELA.Utility
-  version: release_v0.1.1
+  version: 80e2afd897d53a5a030090f9293ddba804bb9277
 - package: github.com/elastos/Elastos.ELA
-  version: release_v0.2.1
+  version: b74a971f9e30e4a46bfbc997974cec045e5d00c6
   subpackages:
   - bloom
   - core
