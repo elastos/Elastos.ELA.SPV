@@ -141,6 +141,9 @@ func (s *service) updateFilter() *bloom.Filter {
 func (s *service) makeEmptyMessage(cmd string) (p2p.Message, error) {
 	var message p2p.Message
 	switch cmd {
+	case p2p.CmdFilterAck:
+		message = new(msg.FilterAck)
+
 	case p2p.CmdInv:
 		message = new(msg.Inv)
 

@@ -186,9 +186,14 @@ func TestNewSPVService(t *testing.T) {
 	}
 
 	// Set on transaction confirmed callback
-	service.RegisterTransactionListener(confirmedListener)
-	service.RegisterTransactionListener(unconfirmedListener)
-
+	err = service.RegisterTransactionListener(confirmedListener)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
+	err = service.RegisterTransactionListener(unconfirmedListener)
+	if !assert.NoError(t, err) {
+		t.FailNow()
+	}
 	// Start spv service
 	service.Start()
 

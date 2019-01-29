@@ -100,7 +100,7 @@ func NewPeer(peer *peer.Peer, cfg *Config) *Peer {
 
 func (p *Peer) sendMessage(out outMsg) {
 	switch out.msg.(type) {
-	case *msg.GetBlocks, *msg.GetData:
+	case *msg.FilterLoad, *msg.GetBlocks, *msg.GetData:
 		p.stallControl <- out.msg
 	}
 	p.SendMessage(out.msg, out.doneChan)
@@ -113,34 +113,34 @@ func (p *Peer) handleMessage(peer *peer.Peer, message p2p.Message) {
 	}
 
 	switch m := message.(type) {
+	case *msg.FilterAck:
+		p.stallControl <- m
+
 	case *msg.Inv:
-		p.stallControl <- message
+		p.stallControl <- m
 		p.cfg.OnInv(p, m)
 
 	case *msg.MerkleBlock:
-		p.stallControl <- message
+		p.stallControl <- m
 		p.blockQueue <- m
 
 	case *msg.Tx:
-		p.stallControl <- message
+		p.stallControl <- m
 		p.blockQueue <- m
 
 	case *msg.NotFound:
-		p.stallControl <- message
+		p.stallControl <- m
 		p.cfg.OnNotFound(p, m)
 
 	case *msg.Reject:
-		p.stallControl <- message
+		p.stallControl <- m
 		p.cfg.OnReject(p, m)
 	}
 }
 
 func (p *Peer) stallHandler() {
-	// lastActive tracks the last active sync message.
-	var lastActive time.Time
-
-	// pendingResponses tracks the expected responses.
-	pendingResponses := make(map[string]struct{})
+	// pendingResponses tracks the expected responses and there deadline time.
+	pendingResponses := make(map[string]time.Time)
 
 	// stallTicker is used to periodically check pending responses that have
 	// exceeded the expected deadline and disconnect the peer due to stalling.
@@ -154,13 +154,20 @@ out:
 	for {
 		select {
 		case ctrMsg := <-p.stallControl:
-			// update last active time
-			lastActive = time.Now()
-
 			switch m := ctrMsg.(type) {
+			case *msg.FilterLoad:
+				// Add expected response
+				pendingResponses[p2p.CmdFilterAck] =
+					time.Now().Add(stallResponseTimeout)
+
+			case *msg.FilterAck:
+				// Remove inventory from expected response map.
+				delete(pendingResponses, p2p.CmdFilterAck)
+
 			case *msg.GetBlocks:
 				// Add expected response
-				pendingResponses[p2p.CmdInv] = struct{}{}
+				pendingResponses[p2p.CmdInv] =
+					time.Now().Add(stallResponseTimeout)
 
 			case *msg.Inv:
 				// Remove inventory from expected response map.
@@ -168,8 +175,9 @@ out:
 
 			case *msg.GetData:
 				// Add expected responses
+				deadline := time.Now().Add(stallResponseTimeout * 3)
 				for _, iv := range m.InvList {
-					pendingResponses[iv.Hash.String()] = struct{}{}
+					pendingResponses[iv.Hash.String()] = deadline
 				}
 
 			case *msg.MerkleBlock:
@@ -186,7 +194,7 @@ out:
 
 			case stallClearMsg:
 				// Clear pending responses.
-				pendingResponses = make(map[string]struct{})
+				pendingResponses = make(map[string]time.Time)
 			}
 
 		case <-stallTicker.C:
@@ -195,14 +203,15 @@ out:
 				continue
 			}
 
-			// Disconnect the peer if any of the pending responses
-			// don't arrive by their adjusted deadline.
-			if time.Now().Before(lastActive.Add(stallResponseTimeout)) {
-				continue
+			// Disconnect the peer if any of the pending responses don't arrive
+			// by their adjusted deadline.
+			now := time.Now()
+			for _, deadline := range pendingResponses {
+				if deadline.Before(now) {
+					log.Debugf("peer %v appears to be stalled or misbehaving, response timeout -- disconnecting", p)
+					p.Disconnect()
+				}
 			}
-
-			log.Debugf("peer %v appears to be stalled or misbehaving, response timeout -- disconnecting", p)
-			p.Disconnect()
 
 		case <-p.InQuit():
 			// The stall handler can exit once both the input and
