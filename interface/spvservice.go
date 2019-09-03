@@ -398,11 +398,10 @@ func (s *spvservice) BlockCommitted(block *util.Block) {
 		}
 
 		// Notify listeners
-		listener, ok := s.notifyTransaction(item.NotifyId, proof, tx, block.Height-item.Height)
+		ok := s.notifyTransaction(item.NotifyId, proof, tx, block.Height-item.Height)
 		if ok {
 			item.LastNotify = time.Now()
 			s.db.Que().Put(item)
-			listener.Notify(item.NotifyId, proof, tx)
 		}
 	}
 }
@@ -447,11 +446,11 @@ func (s *spvservice) queueMessageByListener(
 
 func (s *spvservice) notifyTransaction(notifyId common.Uint256,
 	proof bloom.MerkleProof, tx types.Transaction,
-	confirmations uint32) (TransactionListener, bool) {
+	confirmations uint32) bool {
 
 	listener, ok := s.listeners[notifyId]
 	if !ok {
-		return nil, false
+		return false
 	}
 
 	// Get transaction id
@@ -468,20 +467,21 @@ func (s *spvservice) notifyTransaction(notifyId common.Uint256,
 		} else {
 			s.db.Que().Del(&notifyId, &txId)
 		}
-		return nil, false
+		return false
 	}
 
 	// Notify listener
 	if listener.Flags()&FlagNotifyConfirmed == FlagNotifyConfirmed {
 		if confirmations >= getConfirmations(tx) {
-			return listener, true
+			listener.Notify(notifyId, proof, tx)
+			return true
 		}
 	} else {
 		listener.Notify(notifyId, proof, tx)
-		return listener, true
+		return true
 	}
 
-	return nil, false
+	return false
 }
 
 func getListenerKey(listener TransactionListener) common.Uint256 {
