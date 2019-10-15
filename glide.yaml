@@ -9,7 +9,7 @@ import:
 - package: github.com/cevaris/ordered_map
 - package: github.com/mattn/go-sqlite3
 - package: github.com/elastos/Elastos.ELA
-  version: dev
+  version: 32ea8b8d91a65f5b624555a7f16abc82e6fdd00a
   subpackages:
   - bloom
   - core
