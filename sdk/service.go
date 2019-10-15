@@ -163,10 +163,12 @@ func (s *service) makeEmptyMessage(cmd string) (p2p.Message, error) {
 	return message, nil
 }
 
-func (s *service) newPeer(peer server.IPeer) {
+func (s *service) newPeer(peer server.IPeer) bool {
 	reply := make(chan struct{})
 	s.peerQueue <- newPeerMsg{Peer: peer.ToPeer(), reply: reply}
 	<-reply
+
+	return true
 }
 
 func (s *service) donePeer(peer server.IPeer) {
@@ -445,7 +447,7 @@ func (s *service) onReject(sp *speer.Peer, reject *msg.Reject) {
 		s.txQueue <- &txRejectMsg{iv: &msg.InvVect{Type: msg.InvTypeTx, Hash: reject.Hash}}
 	}
 	log.Warnf("reject message from peer %v: Code: %s, Hash %s, Reason: %s",
-		sp, reject.Code.String(), reject.Hash.String(), reject.Reason)
+		sp, reject.RejectCode.String(), reject.Hash.String(), reject.Reason)
 }
 
 func (s *service) IsCurrent() bool {

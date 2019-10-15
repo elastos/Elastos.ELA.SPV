@@ -8,8 +8,10 @@ import:
 - package: github.com/syndtr/goleveldb/leveldb
 - package: github.com/cevaris/ordered_map
 - package: github.com/mattn/go-sqlite3
+- package: github.com/davecgh/go-spew/spew
+- package: github.com/pmezard/go-difflib/difflib
 - package: github.com/elastos/Elastos.ELA
-  version: dev
+  version: v0.5.0
   subpackages:
   - bloom
   - core
@@ -18,6 +20,6 @@ import:
   - assert
 - package: github.com/urfave/cli
   version: v1.22.0
-- package: gopkg.in/yaml.v2
+- package: gopkg.in/yaml.v3
 ignore:
 - github.com/russross/blackfriday/v2
