@@ -20,6 +20,7 @@ Log
 *.cache
 *.lock
 *.json
+go.sum
 vendor/
 data/
 data_spv/
