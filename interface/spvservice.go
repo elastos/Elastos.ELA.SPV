@@ -182,7 +182,7 @@ func (s *spvservice) GetTransactionIds(height uint32) ([]*common.Uint256, error)
 	return s.db.Txs().GetIds(height)
 }
 
-func (s *spvservice) HeaderStore() database.Headers {
+func (s *spvservice) HeaderStore() store.HeaderStore {
 	return s.headers
 }
 
