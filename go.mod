@@ -4,11 +4,11 @@ go 1.13
 
 require (
 	github.com/cevaris/ordered_map v0.0.0-20190319150403-3adeae072e73
-	github.com/elastos/Elastos.ELA v0.4.1
+	github.com/elastos/Elastos.ELA v0.5.0
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
-	github.com/itchyny/base58-go v0.1.0 // indirect
-	github.com/mattn/go-sqlite3 v2.0.2+incompatible
+	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/urfave/cli v1.22.2
-	golang.org/x/crypto v0.0.0-20200109152110-61a87790db17 // indirect
+	github.com/urfave/cli v1.22.4
+	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
+	golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1 // indirect
 )
