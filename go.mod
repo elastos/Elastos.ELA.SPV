@@ -7,6 +7,7 @@ require (
 	github.com/elastos/Elastos.ELA v0.5.0
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli v1.22.4
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
