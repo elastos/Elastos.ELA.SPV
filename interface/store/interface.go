@@ -21,6 +21,7 @@ type DataStore interface {
 	Txs() Txs
 	Ops() Ops
 	Que() Que
+	Arbiters() Arbiters
 	Batch() DataBatch
 }
 
@@ -113,4 +114,11 @@ type QueItem struct {
 	TxId       common.Uint256
 	Height     uint32
 	LastNotify time.Time
+}
+
+type Arbiters interface {
+	database.DB
+	Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte) error
+	Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error)
+	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 }
