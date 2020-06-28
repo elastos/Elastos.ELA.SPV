@@ -117,6 +117,89 @@ func TestArbiters(t *testing.T) {
 		return
 	}
 
+	// batch put
+	batch := new(leveldb.Batch)
+	err = arbiters.BatchPut(602, crcs, normal, batch)
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
+		return
+	}
+
+	crc, nor, err = arbiters.Get()
+	if err != nil {
+		t.Errorf("get arbiter error %s", err.Error())
+		return
+	}
+	if !checkExist(crc, crcs) {
+		t.Errorf("crc arbiter can not be found")
+		return
+	}
+	if !checkExist(nor, normal) {
+		t.Errorf("normal arbiter can not be found")
+		return
+	}
+
+	err = arbiters.BatchPut(603, crcs, normal, batch)
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
+		return
+	}
+	crc, nor, err = arbiters.Get()
+	if err != nil {
+		t.Errorf("get arbiter error %s", err.Error())
+		return
+	}
+	if !checkExist(crc, crcs) {
+		t.Errorf("crc arbiter can not be found")
+		return
+	}
+	if !checkExist(nor, normal) {
+		t.Errorf("normal arbiter can not be found")
+		return
+	}
+
+	append1, _ = hex.DecodeString("02ECF46B0DE8435DD4E4A93341763F3DDBF12C106C0BE00363B114EFE90F5D2F58")
+	crcs = append(crcs, append1)
+
+	err = arbiters.BatchPut(605, crcs, normal, batch)
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
+		return
+	}
+	crc, nor, err = arbiters.Get()
+	if err != nil {
+		t.Errorf("get arbiter error %s", err.Error())
+		return
+	}
+	if !checkExist(crc, crcs) {
+		t.Errorf("crc arbiter can not be found")
+		return
+	}
+	if !checkExist(nor, normal) {
+		t.Errorf("normal arbiter can not be found")
+		return
+	}
+
+	err = arbiters.BatchPut(607, crcs, normal, batch)
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
+		return
+	}
+	crc, nor, err = arbiters.Get()
+	if err != nil {
+		t.Errorf("get arbiter error %s", err.Error())
+		return
+	}
+	if !checkExist(crc, crcs) {
+		t.Errorf("crc arbiter can not be found")
+		return
+	}
+	if !checkExist(nor, normal) {
+		t.Errorf("normal arbiter can not be found")
+		return
+	}
+
+	arbiters.CommitBatch(batch)
 }
 
 func checkExist(target [][]byte, src [][]byte) bool {
