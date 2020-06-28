@@ -15,9 +15,9 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/interface/store"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
-
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/elanet/filter"
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
@@ -233,6 +233,15 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 				TxId:     tx.Hash(),
 				Height:   height,
 			})
+		}
+	}
+
+	if tx.TxType == types.NextTurnDPOSInfo {
+		nextTurnDposInfo := tx.Payload.(*payload.NextTurnDPOSInfo)
+		nakedBatch := batch.GetNakedBatch()
+		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight, nextTurnDposInfo.CRPublickeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
+		if err != nil {
+			return false, err
 		}
 	}
 

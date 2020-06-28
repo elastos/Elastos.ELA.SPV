@@ -22,16 +22,17 @@ var (
 var _ Arbiters = (*arbiters)(nil)
 
 type arbiters struct {
+	batch
 	sync.RWMutex
 	db    *leveldb.DB
-	batch *leveldb.Batch
+	b     *leveldb.Batch
 	cache map[common.Uint256]uint32
 }
 
 func NewArbiters(db *leveldb.DB) *arbiters {
 	return &arbiters{
 		db:    db,
-		batch: new(leveldb.Batch),
+		b:     new(leveldb.Batch),
 		cache: make(map[common.Uint256]uint32),
 	}
 }
@@ -39,11 +40,19 @@ func NewArbiters(db *leveldb.DB) *arbiters {
 func (c *arbiters) Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte) error {
 	c.Lock()
 	defer c.Unlock()
+	if err := c.batchPut(height, crcArbiters, normalArbiters, c.b); err != nil {
+		return err
+	}
+	c.db.Write(c.b, nil)
+	return nil
+}
+
+func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error {
 	pos := c.getCurrentPosition()
 	if height <= pos {
 		return errors.New("height must be bigger than existed position")
 	}
-	c.batch.Put(BKTArbPosition, uint32toBytes(height))
+	batch.Put(BKTArbPosition, uint32toBytes(height))
 	var ars [][]byte
 	for _, a := range crcArbiters {
 		ars = append(ars, a)
@@ -68,22 +77,25 @@ func (c *arbiters) Put(height uint32, crcArbiters [][]byte, normalArbiters [][]b
 		if err == nil {
 			c.cache[*key] = bytesToUint32(existHeight)
 			err = c.db.Put(index, existHeight, nil)
-			c.db.Write(c.batch, nil)
 			return nil
 		} else if err == leveldb.ErrNotFound {
 			c.cache[*key] = height
-			c.batch.Put(index, getValueBytes(ars, uint8(len(crcArbiters))))
-			c.batch.Put(hash[:], uint32toBytes(height))
-			c.db.Write(c.batch, nil)
+			batch.Put(index, getValueBytes(ars, uint8(len(crcArbiters))))
+			batch.Put(hash[:], uint32toBytes(height))
 			return nil
 		} else {
 			return err
 		}
 	}
 
-	c.batch.Put(index, uint32toBytes(val))
-	c.db.Write(c.batch, nil)
+	batch.Put(index, uint32toBytes(val))
 	return nil
+}
+
+func (c *arbiters) BatchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error {
+	c.Lock()
+	defer c.Unlock()
+	return c.batchPut(height, crcArbiters, normalArbiters, batch)
 }
 
 func (c *arbiters) Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
@@ -140,10 +152,10 @@ func (c *arbiters) Clear() error {
 	it := c.db.NewIterator(dbutil.BytesPrefix(BKTArbiters), nil)
 	defer it.Release()
 	for it.Next() {
-		c.batch.Delete(it.Key())
+		c.b.Delete(it.Key())
 	}
-	c.batch.Delete(BKTArbPosition)
-	return c.db.Write(c.batch, nil)
+	c.b.Delete(BKTArbPosition)
+	return c.db.Write(c.b, nil)
 }
 
 func (c *arbiters) getCurrentPosition() uint32 {
@@ -153,6 +165,24 @@ func (c *arbiters) getCurrentPosition() uint32 {
 	}
 
 	return 0
+}
+
+func (c *arbiters) Commit() error {
+	return c.db.Write(c.b, nil)
+}
+
+func (c *arbiters) Rollback() error {
+	c.b.Reset()
+	return nil
+}
+
+func (c *arbiters) CommitBatch(batch *leveldb.Batch) error {
+	return c.db.Write(batch, nil)
+}
+
+func (c *arbiters) RollbackBatch(batch *leveldb.Batch) error {
+	batch.Reset()
+	return nil
 }
 
 func uint32toBytes(data uint32) []byte {
