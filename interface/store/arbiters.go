@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/elastos/Elastos.ELA/common"
+
 	"github.com/syndtr/goleveldb/leveldb"
 	dbutil "github.com/syndtr/goleveldb/leveldb/util"
 )
@@ -76,7 +77,7 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 		existHeight, err := c.db.Get(hash[:], nil)
 		if err == nil {
 			c.cache[*key] = bytesToUint32(existHeight)
-			err = c.db.Put(index, existHeight, nil)
+			batch.Put(index, existHeight)
 			return nil
 		} else if err == leveldb.ErrNotFound {
 			c.cache[*key] = height

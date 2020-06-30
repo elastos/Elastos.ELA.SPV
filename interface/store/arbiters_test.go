@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/hex"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -10,7 +11,9 @@ import (
 )
 
 func TestArbiters(t *testing.T) {
-	dataDir := "/tmp"
+	dataDir := "spv_test"
+	os.RemoveAll(dataDir)
+
 	db, err := leveldb.OpenFile(filepath.Join(dataDir, "store"), nil)
 	if err != nil {
 		println(err.Error())
