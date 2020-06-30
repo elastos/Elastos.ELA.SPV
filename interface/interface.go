@@ -23,6 +23,9 @@ type Config struct {
 	// Rollback callbacks that, the transactions
 	// on the given height has been rollback
 	OnRollback func(height uint32)
+
+	//FilterType is the filter type .(FTBloom, FTDPOS  and so on )
+	FilterType uint8
 }
 
 /*
@@ -53,6 +56,9 @@ type SPVService interface {
 
 	// GetTransactionIds query all transaction hashes on the given block height.
 	GetTransactionIds(height uint32) ([]*common.Uint256, error)
+
+	//Get arbiters according to height
+	GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 
 	// Get headers database
 	HeaderStore() database.Headers

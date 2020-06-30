@@ -15,10 +15,10 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/interface/store"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
+
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
-	"github.com/elastos/Elastos.ELA/elanet/filter"
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
 )
@@ -37,6 +37,8 @@ type spvservice struct {
 	db        store.DataStore
 	rollback  func(height uint32)
 	listeners map[common.Uint256]TransactionListener
+	//FilterType is the filter type .(FTBloom, FTDPOS  and so on )
+	filterType uint8
 }
 
 // NewSPVService creates a new SPV service instance.
@@ -68,6 +70,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		db:        dataStore,
 		rollback:  cfg.OnRollback,
 		listeners: make(map[common.Uint256]TransactionListener),
+		filterType: cfg.FilterType,
 	}
 
 	chainStore := database.NewChainDB(headerStore, service)
@@ -170,6 +173,11 @@ func (s *spvservice) GetTransaction(txId *common.Uint256) (*types.Transaction, e
 	return &tx, nil
 }
 
+//Get arbiters according to height
+func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error){
+	return s.db.Arbiters().GetByHeight(height)
+}
+
 func (s *spvservice) GetTransactionIds(height uint32) ([]*common.Uint256, error) {
 	return s.db.Txs().GetIds(height)
 }
@@ -184,7 +192,7 @@ func (s *spvservice) GetFilter() *msg.TxFilterLoad {
 	for _, address := range addrs {
 		f.Add(address.Bytes())
 	}
-	return f.ToTxFilterMsg(filter.FTBloom)
+	return f.ToTxFilterMsg(s.filterType)
 }
 
 func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
@@ -206,6 +214,15 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		addr := s.db.Ops().HaveOp(util.NewOutPoint(op.TxID, op.Index))
 		if addr != nil {
 			hits[*addr] = struct{}{}
+		}
+	}
+
+	if tx.TxType == types.NextTurnDPOSInfo {
+		nextTurnDposInfo := tx.Payload.(*payload.NextTurnDPOSInfo)
+		nakedBatch := batch.GetNakedBatch()
+		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight, nextTurnDposInfo.CRPublickeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
+		if err != nil {
+			return false, err
 		}
 	}
 
@@ -236,14 +253,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		}
 	}
 
-	if tx.TxType == types.NextTurnDPOSInfo {
-		nextTurnDposInfo := tx.Payload.(*payload.NextTurnDPOSInfo)
-		nakedBatch := batch.GetNakedBatch()
-		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight, nextTurnDposInfo.CRPublickeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
-		if err != nil {
-			return false, err
-		}
-	}
+
 
 	return false, batch.Txs().Put(util.NewTx(utx, height))
 }
