@@ -3,6 +3,7 @@ package _interface
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -60,16 +61,24 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		return nil, err
 	}
 
-	dataStore, err := store.NewDataStore(dataDir)
+	var originArbiters [][]byte
+	for _, a := range cfg.ChainParams.CRCArbiters {
+		v, err := hex.DecodeString(a)
+		if err != nil {
+			return nil, err
+		}
+		originArbiters = append(originArbiters, v)
+	}
+	dataStore, err := store.NewDataStore(dataDir, originArbiters)
 	if err != nil {
 		return nil, err
 	}
 
 	service := &spvservice{
-		headers:   headerStore,
-		db:        dataStore,
-		rollback:  cfg.OnRollback,
-		listeners: make(map[common.Uint256]TransactionListener),
+		headers:    headerStore,
+		db:         dataStore,
+		rollback:   cfg.OnRollback,
+		listeners:  make(map[common.Uint256]TransactionListener),
 		filterType: cfg.FilterType,
 	}
 
@@ -174,7 +183,7 @@ func (s *spvservice) GetTransaction(txId *common.Uint256) (*types.Transaction, e
 }
 
 //Get arbiters according to height
-func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error){
+func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	return s.db.Arbiters().GetByHeight(height)
 }
 
@@ -252,8 +261,6 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 			})
 		}
 	}
-
-
 
 	return false, batch.Txs().Put(util.NewTx(utx, height))
 }

@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	BKTArbiters    = []byte("C")
-	BKTArbPosition = []byte("P")
+	BKTArbiters     = []byte("C")
+	BKTArbPosition  = []byte("P")
+	BKTArbPositions = []byte("Z")
 )
 
 // Ensure arbiters implement arbiters interface.
@@ -25,16 +26,20 @@ var _ Arbiters = (*arbiters)(nil)
 type arbiters struct {
 	batch
 	sync.RWMutex
-	db    *leveldb.DB
-	b     *leveldb.Batch
-	cache map[common.Uint256]uint32
+	db             *leveldb.DB
+	b              *leveldb.Batch
+	posCache       []uint32
+	cache          map[common.Uint256]uint32
+	originArbiters [][]byte
 }
 
-func NewArbiters(db *leveldb.DB) *arbiters {
+func NewArbiters(db *leveldb.DB, originArbiters [][]byte) *arbiters {
 	return &arbiters{
-		db:    db,
-		b:     new(leveldb.Batch),
-		cache: make(map[common.Uint256]uint32),
+		db:             db,
+		b:              new(leveldb.Batch),
+		posCache:       make([]uint32, 0),
+		cache:          make(map[common.Uint256]uint32),
+		originArbiters: originArbiters,
 	}
 }
 
@@ -54,6 +59,8 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 		return errors.New("height must be bigger than existed position")
 	}
 	batch.Put(BKTArbPosition, uint32toBytes(height))
+	c.posCache = append(c.getCurrentPositions(), height)
+	batch.Put(BKTArbPositions, uint32ArrayToBytes(c.posCache))
 	var ars [][]byte
 	for _, a := range crcArbiters {
 		ars = append(ars, a)
@@ -102,7 +109,7 @@ func (c *arbiters) BatchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 func (c *arbiters) Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	c.RLock()
 	defer c.RUnlock()
-	return c.get(c.getCurrentPosition())
+	return c.GetByHeight(c.getCurrentPosition())
 }
 
 func (c *arbiters) get(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
@@ -139,6 +146,21 @@ func (c *arbiters) get(height uint32) (crcArbiters [][]byte, normalArbiters [][]
 func (c *arbiters) GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	c.RLock()
 	defer c.RUnlock()
+	var pos []uint32
+	if len(c.posCache) == 0 {
+		pos = c.getCurrentPositions()
+		c.posCache = pos
+	} else {
+		pos = c.posCache
+	}
+	slot, err := findSlot(pos, height)
+	if err != nil {
+		return nil, nil, err
+	}
+	if slot == 0 {
+		return c.originArbiters, nil, nil
+	}
+	height = slot
 	return c.get(height)
 }
 
@@ -168,6 +190,14 @@ func (c *arbiters) getCurrentPosition() uint32 {
 	return 0
 }
 
+func (c *arbiters) getCurrentPositions() []uint32 {
+	pos, err := c.db.Get(BKTArbPositions, nil)
+	if err == nil {
+		return bytesToUint32Array(pos)
+	}
+	return nil
+}
+
 func (c *arbiters) Commit() error {
 	return c.db.Write(c.b, nil)
 }
@@ -192,6 +222,17 @@ func uint32toBytes(data uint32) []byte {
 	return r[:]
 }
 
+func uint32ArrayToBytes(data []uint32) []byte {
+	var r [4]byte
+	binary.LittleEndian.PutUint32(r[:], uint32(len(data)))
+	var buffer bytes.Buffer
+	buffer.Write(r[:])
+	for i := 0; i < len(data); i++ {
+		buffer.Write(uint32toBytes(data[i]))
+	}
+	return buffer.Bytes()
+}
+
 func getIndex(data uint32) []byte {
 	var kdata [4]byte
 	binary.LittleEndian.PutUint32(kdata[:], data)
@@ -202,6 +243,16 @@ func bytesToUint32(data []byte) uint32 {
 	return binary.LittleEndian.Uint32(data)
 }
 
+func bytesToUint32Array(data []byte) []uint32 {
+	len := binary.LittleEndian.Uint32(data)
+	var ret []uint32
+	for i := 0; i < int(len); i++ {
+		val := data[(i*4)+4 : (i+1)*4+4]
+		ret = append(ret, binary.LittleEndian.Uint32(val))
+	}
+	return ret
+}
+
 func getValueBytes(data [][]byte, crclen uint8) []byte {
 	buf := new(bytes.Buffer)
 	common.WriteUint8(buf, crclen)
@@ -209,4 +260,27 @@ func getValueBytes(data [][]byte, crclen uint8) []byte {
 		buf.Write(v)
 	}
 	return buf.Bytes()
+}
+
+func findSlot(pos []uint32, height uint32) (uint32, error) {
+
+	if len(pos) == 0 {
+		return 0, errors.New("invalid height")
+	}
+
+	if pos[len(pos)-1]+36 < height {
+		return 0, errors.New("invalid height")
+	}
+
+	for i := len(pos) - 1; i >= 0; i-- {
+		if height >= pos[i] {
+			if i-1 >= 0 {
+				return pos[i-1], nil
+			} else {
+				return 0, nil
+			}
+		}
+	}
+
+	return 0, errors.New("invalid height")
 }
