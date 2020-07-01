@@ -20,7 +20,7 @@ type dataStore struct {
 	ars   *arbiters
 }
 
-func NewDataStore(dataDir string) (*dataStore, error) {
+func NewDataStore(dataDir string, originArbiters [][]byte) (*dataStore, error) {
 	db, err := leveldb.OpenFile(filepath.Join(dataDir, "store"), nil)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func NewDataStore(dataDir string) (*dataStore, error) {
 		txs:   NewTxs(db),
 		ops:   NewOps(db),
 		que:   NewQue(db),
-		ars:   NewArbiters(db),
+		ars:   NewArbiters(db, originArbiters),
 	}, nil
 }
 
