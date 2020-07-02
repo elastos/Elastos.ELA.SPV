@@ -55,12 +55,15 @@ func (c *arbiters) Put(height uint32, crcArbiters [][]byte, normalArbiters [][]b
 
 func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error {
 	pos := c.getCurrentPosition()
-	if height <= pos {
-		return errors.New("height must be bigger than existed position")
+	var isRollback bool
+	if height == pos {
+		isRollback = true
 	}
 	batch.Put(BKTArbPosition, uint32toBytes(height))
-	c.posCache = append(c.getCurrentPositions(), height)
-	batch.Put(BKTArbPositions, uint32ArrayToBytes(c.posCache))
+	if !isRollback {
+		c.posCache = append(c.getCurrentPositions(), height)
+		batch.Put(BKTArbPositions, uint32ArrayToBytes(c.posCache))
+	}
 	var ars [][]byte
 	for _, a := range crcArbiters {
 		ars = append(ars, a)
@@ -70,10 +73,7 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 	}
 	copyars := make([][]byte, len(ars))
 	copy(copyars, ars)
-	sort.Slice(copyars, func(i, j int) bool {
-		return bytes.Compare(copyars[i], copyars[j]) < 0
-	})
-	hash := sha256.Sum256(getValueBytes(copyars, uint8(len(crcArbiters))))
+	hash := calcHash(copyars, crcArbiters)
 	key, err := common.Uint256FromBytes(hash[:])
 	if err != nil {
 		return err
@@ -274,13 +274,16 @@ func findSlot(pos []uint32, height uint32) (uint32, error) {
 
 	for i := len(pos) - 1; i >= 0; i-- {
 		if height >= pos[i] {
-			if i-1 >= 0 {
-				return pos[i-1], nil
-			} else {
-				return 0, nil
-			}
+			return pos[i], nil
 		}
 	}
 
-	return 0, errors.New("invalid height")
+	return 0, nil
+}
+
+func calcHash(ars [][]byte, crcArbiters [][]byte) [32]byte {
+	sort.Slice(ars, func(i, j int) bool {
+		return bytes.Compare(ars[i], ars[j]) < 0
+	})
+	return sha256.Sum256(getValueBytes(ars, uint8(len(crcArbiters))))
 }
