@@ -100,7 +100,7 @@ func TestArbiters(t *testing.T) {
 		t.Errorf("get arbiter error %s", err.Error())
 		return
 	}
-	if !checkExist(crc, crcscopy) {
+	if !checkExist(crc, crcs) {
 		t.Errorf("crc arbiter can not be found")
 		return
 	}
@@ -125,6 +125,12 @@ func TestArbiters(t *testing.T) {
 	}
 	if !checkExist(nor, normal) {
 		t.Errorf("normal arbiter can not be found")
+		return
+	}
+
+	err = arbiters.Put(407, crcscopy, normal)
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
 		return
 	}
 
@@ -156,7 +162,7 @@ func TestArbiters(t *testing.T) {
 		t.FailNow()
 	}
 
-	crc, nor, err = arbiters.GetByHeight(402)
+	crc, nor, err = arbiters.GetByHeight(400)
 	if err != nil {
 		t.Errorf("get arbiter error %s", err.Error())
 		return
