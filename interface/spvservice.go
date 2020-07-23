@@ -442,7 +442,7 @@ func (s *spvservice) BlockCommitted(block *util.Block) {
 		}
 	}
 
-	if s.blockListener != nil {
+	if s.blockListener != nil && s.IsCurrent() {
 		s.blockListener.NotifyBlock(block)
 	}
 
