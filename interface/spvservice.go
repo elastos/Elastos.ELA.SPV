@@ -34,10 +34,11 @@ const (
 
 type spvservice struct {
 	sdk.IService
-	headers   store.HeaderStore
-	db        store.DataStore
-	rollback  func(height uint32)
-	listeners map[common.Uint256]TransactionListener
+	headers       store.HeaderStore
+	db            store.DataStore
+	rollback      func(height uint32)
+	listeners     map[common.Uint256]TransactionListener
+	blockListener BlockListener
 	//FilterType is the filter type .(FTBloom, FTDPOS  and so on )
 	filterType uint8
 }
@@ -122,6 +123,11 @@ func (s *spvservice) RegisterTransactionListener(listener TransactionListener) e
 	return s.db.Addrs().Put(address)
 }
 
+func (s *spvservice) RegisterBlockListener(listener BlockListener) error {
+	s.blockListener = listener
+	return nil
+}
+
 func (s *spvservice) SubmitTransactionReceipt(notifyId, txHash common.Uint256) error {
 	return s.db.Que().Del(&notifyId, &txHash)
 }
@@ -189,6 +195,10 @@ func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArb
 
 func (s *spvservice) GetTransactionIds(height uint32) ([]*common.Uint256, error) {
 	return s.db.Txs().GetIds(height)
+}
+
+func (s *spvservice) GetBlockListener() BlockListener {
+	return s.blockListener
 }
 
 func (s *spvservice) HeaderStore() store.HeaderStore {
@@ -431,6 +441,11 @@ func (s *spvservice) BlockCommitted(block *util.Block) {
 			listener.Notify(item.NotifyId, proof, tx)
 		}
 	}
+
+	if s.blockListener != nil {
+		s.blockListener.NotifyBlock(block)
+	}
+
 }
 
 func (s *spvservice) ClearData() error {
