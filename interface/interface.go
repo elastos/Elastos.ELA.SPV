@@ -111,7 +111,7 @@ type TransactionListener interface {
 
 /*
 Register this listener to IService RegisterBlockListener() method
-to receive transaction notifications.
+to receive block notifications.
 */
 type BlockListener interface {
 
