@@ -64,16 +64,7 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 		c.posCache = append(c.getCurrentPositions(), height)
 		batch.Put(BKTArbPositions, uint32ArrayToBytes(c.posCache))
 	}
-	var ars [][]byte
-	for _, a := range crcArbiters {
-		ars = append(ars, a)
-	}
-	for _, a := range normalArbiters {
-		ars = append(ars, a)
-	}
-	copyars := make([][]byte, len(ars))
-	copy(copyars, ars)
-	hash := calcHash(copyars, crcArbiters)
+	hash := calcHash(crcArbiters, normalArbiters)
 	key, err := common.Uint256FromBytes(hash[:])
 	if err != nil {
 		return err
@@ -88,7 +79,7 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 			return nil
 		} else if err == leveldb.ErrNotFound {
 			c.cache[*key] = height
-			batch.Put(index, getValueBytes(ars, uint8(len(crcArbiters))))
+			batch.Put(index, getValueBytes(crcArbiters, normalArbiters))
 			batch.Put(hash[:], uint32toBytes(height))
 			return nil
 		} else {
@@ -124,21 +115,28 @@ func (c *arbiters) get(height uint32) (crcArbiters [][]byte, normalArbiters [][]
 			return
 		}
 	}
-	buf := new(bytes.Buffer)
-	buf.WriteByte(val[0])
-	var crclen uint8
-	crclen, err = common.ReadUint8(buf)
+	r := bytes.NewReader(val)
+	crcCount, err := common.ReadUint8(r)
 	if err != nil {
 		return
 	}
-	for i := 0; i < (len(val)-1)/33; i++ {
-		prefix := i*33 + 1
-		suffix := (i+1)*33 + 1
-		if i <= int(crclen-1) {
-			crcArbiters = append(crcArbiters, val[prefix:suffix])
-		} else {
-			normalArbiters = append(normalArbiters, val[prefix:suffix])
+	for i := uint8(0); i < crcCount; i++ {
+		cr, err := common.ReadVarBytes(r, 33, "public key")
+		if err != nil {
+			return nil, nil, err
 		}
+		crcArbiters = append(crcArbiters, cr)
+	}
+	normalCount, err := common.ReadUint8(r)
+	if err != nil {
+		return
+	}
+	for i := uint8(0); i < normalCount; i++ {
+		producer, err := common.ReadVarBytes(r, 33, "public key")
+		if err != nil {
+			return nil, nil, err
+		}
+		normalArbiters = append(normalArbiters, producer)
 	}
 	return
 }
@@ -253,12 +251,17 @@ func bytesToUint32Array(data []byte) []uint32 {
 	return ret
 }
 
-func getValueBytes(data [][]byte, crclen uint8) []byte {
+func getValueBytes(crc [][]byte, nor [][]byte) []byte {
 	buf := new(bytes.Buffer)
-	common.WriteUint8(buf, crclen)
-	for _, v := range data {
-		buf.Write(v)
+	common.WriteUint8(buf, uint8(len(crc)))
+	for _, v := range crc {
+		common.WriteVarBytes(buf, v)
 	}
+	common.WriteUint8(buf, uint8(len(nor)))
+	for _, v := range nor {
+		common.WriteVarBytes(buf, v)
+	}
+
 	return buf.Bytes()
 }
 
@@ -281,9 +284,10 @@ func findSlot(pos []uint32, height uint32) (uint32, error) {
 	return 0, nil
 }
 
-func calcHash(ars [][]byte, crcArbiters [][]byte) [32]byte {
-	sort.Slice(ars, func(i, j int) bool {
-		return bytes.Compare(ars[i], ars[j]) < 0
+func calcHash(crcArbiters [][]byte, norArbiters [][]byte) [32]byte {
+	buf := getValueBytes(crcArbiters, norArbiters)
+	sort.Slice(buf, func(i, j int) bool {
+		return buf[i] < buf[j]
 	})
-	return sha256.Sum256(getValueBytes(ars, uint8(len(crcArbiters))))
+	return sha256.Sum256(buf)
 }
