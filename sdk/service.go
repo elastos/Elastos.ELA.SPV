@@ -114,7 +114,7 @@ func newService(cfg *Config) (*service, error) {
 		params.DefaultPort, params.DNSSeeds, nil,
 		service.newPeer, service.donePeer, service.makeEmptyMessage,
 		func() uint64 { return uint64(chain.BestHeight()) },
-		params.NewVersionHeight, "",
+		params.NewP2PProtocolVersionHeight, "",
 	)
 	svrCfg.DataDir = dataDir
 	svrCfg.MaxPeers = defaultMaxPeers
