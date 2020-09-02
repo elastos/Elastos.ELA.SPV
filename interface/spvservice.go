@@ -99,6 +99,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		NewBlockHeader: newBlockHeader,
 		GetTxFilter:    service.GetFilter,
 		StateNotifier:  service,
+		NodeVersion : cfg.NodeVersion,
 	}
 
 	service.IService, err = sdk.NewService(serviceCfg)
