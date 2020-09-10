@@ -41,6 +41,8 @@ type spvservice struct {
 	blockListener BlockListener
 	//FilterType is the filter type .(FTBloom, FTDPOS  and so on )
 	filterType uint8
+	// p2p  Protocol version height  use to change version msg content
+ 	NewP2PProtocolVersionHeight        uint64
 }
 
 // NewSPVService creates a new SPV service instance.
@@ -81,6 +83,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		rollback:   cfg.OnRollback,
 		listeners:  make(map[common.Uint256]TransactionListener),
 		filterType: cfg.FilterType,
+		NewP2PProtocolVersionHeight: cfg.ChainParams.NewP2PProtocolVersionHeight,
 	}
 
 	chainStore := database.NewChainDB(headerStore, service)
