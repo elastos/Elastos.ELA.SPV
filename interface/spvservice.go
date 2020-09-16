@@ -243,7 +243,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 	if tx.TxType == types.NextTurnDPOSInfo {
 		nextTurnDposInfo := tx.Payload.(*payload.NextTurnDPOSInfo)
 		nakedBatch := batch.GetNakedBatch()
-		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight, nextTurnDposInfo.CRPublickeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
+		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight, nextTurnDposInfo.CRPublicKeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
 		if err != nil {
 			return false, err
 		}
