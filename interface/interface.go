@@ -73,6 +73,9 @@ type SPVService interface {
 	// Get headers database
 	HeaderStore() store.HeaderStore
 
+	// update filter
+	UpdateFilter()
+
 	// Start the SPV service
 	Start()
 

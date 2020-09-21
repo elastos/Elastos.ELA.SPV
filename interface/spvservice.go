@@ -20,6 +20,7 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/elanet/filter"
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
 )
@@ -215,7 +216,17 @@ func (s *spvservice) GetFilter() *msg.TxFilterLoad {
 	for _, address := range addrs {
 		f.Add(address.Bytes())
 	}
-	return f.ToTxFilterMsg(s.filterType)
+	bestHead , err := s.headers.GetBest()
+	if err != nil{
+		return f.ToTxFilterMsg(filter.FTBloom)
+	}
+	if bestHead.Height < uint32(s.NewP2PProtocolVersionHeight) {
+		return f.ToTxFilterMsg(filter.FTBloom)
+
+	}else {
+		return f.ToTxFilterMsg(s.filterType)
+	}
+
 }
 
 func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
