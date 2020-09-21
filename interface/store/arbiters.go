@@ -31,15 +31,17 @@ type arbiters struct {
 	posCache       []uint32
 	cache          map[common.Uint256]uint32
 	originArbiters [][]byte
+	arbitersCount  int
 }
 
-func NewArbiters(db *leveldb.DB, originArbiters [][]byte) *arbiters {
+func NewArbiters(db *leveldb.DB, originArbiters [][]byte, arbitersCount int) *arbiters {
 	return &arbiters{
 		db:             db,
 		b:              new(leveldb.Batch),
 		posCache:       make([]uint32, 0),
 		cache:          make(map[common.Uint256]uint32),
 		originArbiters: originArbiters,
+		arbitersCount:  arbitersCount,
 	}
 }
 
@@ -152,7 +154,7 @@ func (c *arbiters) GetByHeight(height uint32) (crcArbiters [][]byte, normalArbit
 	} else {
 		pos = c.posCache
 	}
-	slot, err := findSlot(pos, height)
+	slot, err := findSlot(pos, height, c.arbitersCount)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -272,18 +274,18 @@ func getValueBytes(crc [][]byte, nor [][]byte) []byte {
 	return buf.Bytes()
 }
 
-func findSlot(pos []uint32, height uint32) (uint32, error) {
+func findSlot(pos []uint32, height uint32, arbitersCount int) (uint32, error) {
 
 	if len(pos) == 0 {
 		return 0, errors.New("invalid height")
 	}
 
-	if pos[len(pos)-1]+36 < height {
+	if pos[len(pos)-1]+uint32(arbitersCount) < height {
 		return 0, errors.New("invalid height")
 	}
 
 	for i := len(pos) - 1; i >= 0; i-- {
-		if height >= pos[i] {
+		if height > pos[i] {
 			return pos[i], nil
 		}
 	}
