@@ -198,6 +198,11 @@ func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArb
 	return s.db.Arbiters().GetByHeight(height)
 }
 
+//Get arbiters according to height
+func (s *spvservice) GetReservedCustomIDs() (map[string]string, error) {
+	return s.db.CID().GetReservedCustomIDs()
+}
+
 func (s *spvservice) GetTransactionIds(height uint32) ([]*common.Uint256, error) {
 	return s.db.Txs().GetIds(height)
 }
@@ -244,9 +249,29 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 	if tx.TxType == types.NextTurnDPOSInfo {
 		nextTurnDposInfo := tx.Payload.(*payload.NextTurnDPOSInfo)
 		nakedBatch := batch.GetNakedBatch()
-		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight, nextTurnDposInfo.CRPublicKeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
+		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight,
+			nextTurnDposInfo.CRPublicKeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
 		if err != nil {
 			return false, err
+		}
+	}
+
+	if tx.TxType == types.CRCProposal {
+		p, ok := tx.Payload.(*payload.CRCProposal)
+		if !ok {
+			return false, errors.New("invalid crc proposal tx")
+		}
+		nakedBatch := batch.GetNakedBatch()
+		switch p.ProposalType {
+		case payload.ReserveCustomID:
+			err := s.db.CID().BatchPut(p.ReservedCustomIDList, nakedBatch)
+			if err != nil {
+				return false, err
+			}
+		case payload.ReceiveCustomID:
+			// todo complete me
+		case payload.ChangeCustomIDFee:
+			// todo complete me
 		}
 	}
 
