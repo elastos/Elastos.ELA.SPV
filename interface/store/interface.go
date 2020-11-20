@@ -23,6 +23,7 @@ type DataStore interface {
 	Ops() Ops
 	Que() Que
 	Arbiters() Arbiters
+	CID() CustomID
 	Batch() DataBatch
 }
 
@@ -124,4 +125,11 @@ type Arbiters interface {
 	BatchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error
 	Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
+}
+
+type CustomID interface {
+	database.DB
+	Put(reservedCustomIDs []string) error
+	BatchPut(reservedCustomIDs []string, batch *leveldb.Batch) error
+	GetReservedCustomIDs() (map[string]struct{}, error)
 }
