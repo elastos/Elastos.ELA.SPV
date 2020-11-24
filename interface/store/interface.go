@@ -135,6 +135,10 @@ type CustomID interface {
 	PutReceivedCustomIDs(reservedCustomIDs []string, did common.Uint168) error
 	BatchPutReceivedCustomIDs(receivedCustomIDs []string, did common.Uint168, batch *leveldb.Batch) error
 
+	PutRChangeCustomIDFee(rate common.Fixed64) error
+	BatchPutChangeCustomIDFee(rate common.Fixed64, batch *leveldb.Batch) error
+
 	GetReservedCustomIDs() (map[string]struct{}, error)
 	GetReceivedCustomIDs() (map[string]common.Uint168, error)
+	GetCustomIDFeeRate() (common.Fixed64, error)
 }

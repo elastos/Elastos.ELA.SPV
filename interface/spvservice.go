@@ -199,7 +199,7 @@ func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArb
 }
 
 //Get arbiters according to height
-func (s *spvservice) GetReservedCustomIDs() (map[string]string, error) {
+func (s *spvservice) GetReservedCustomIDs() (map[string]struct{}, error) {
 	return s.db.CID().GetReservedCustomIDs()
 }
 
@@ -276,7 +276,10 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 				return false, err
 			}
 		case payload.ChangeCustomIDFee:
-			// todo complete me
+			if err := s.db.CID().BatchPutChangeCustomIDFee(
+				p.RateOfCustomIDFee, nakedBatch); err != nil {
+				return false, err
+			}
 		}
 	}
 

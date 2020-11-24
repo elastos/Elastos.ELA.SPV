@@ -68,7 +68,7 @@ type SPVService interface {
 	GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 
 	// GetReservedCustomIDs query all reserved custom ID.
-	GetReservedCustomIDs() (map[string]string, error)
+	GetReservedCustomIDs() (map[string]struct{}, error)
 
 	// GetBlockListener Get block listener
 	GetBlockListener() BlockListener
