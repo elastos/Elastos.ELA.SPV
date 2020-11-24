@@ -129,16 +129,16 @@ type Arbiters interface {
 
 type CustomID interface {
 	database.DB
-	PutReservedCustomIDs(reservedCustomIDs []string) error
-	BatchPutReservedCustomIDs(reservedCustomIDs []string, batch *leveldb.Batch) error
+	PutControversialReservedCustomIDs(reservedCustomIDs []string) error
+	BatchPutControversialReservedCustomIDs(reservedCustomIDs []string, batch *leveldb.Batch) error
 
-	PutReceivedCustomIDs(reservedCustomIDs []string, did common.Uint168) error
-	BatchPutReceivedCustomIDs(receivedCustomIDs []string, did common.Uint168, batch *leveldb.Batch) error
+	PutControversialReceivedCustomIDs(reservedCustomIDs []string, did common.Uint168) error
+	BatchPutControversialReceivedCustomIDs(receivedCustomIDs []string, did common.Uint168, batch *leveldb.Batch) error
 
 	PutRChangeCustomIDFee(rate common.Fixed64) error
 	BatchPutChangeCustomIDFee(rate common.Fixed64, batch *leveldb.Batch) error
 
-	GetReservedCustomIDs() (map[string]struct{}, error)
-	GetReceivedCustomIDs() (map[string]common.Uint168, error)
+	GetControversialReservedCustomIDs() (map[string]struct{}, error)
+	GetControversialReceivedCustomIDs() (map[string]common.Uint168, error)
 	GetCustomIDFeeRate() (common.Fixed64, error)
 }

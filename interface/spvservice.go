@@ -198,14 +198,14 @@ func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArb
 	return s.db.Arbiters().GetByHeight(height)
 }
 
-// Get reserved custom ID.
-func (s *spvservice) GetReservedCustomIDs() (map[string]struct{}, error) {
-	return s.db.CID().GetReservedCustomIDs()
+// Get controversial reserved custom ID.
+func (s *spvservice) GetControversialReservedCustomIDs() (map[string]struct{}, error) {
+	return s.db.CID().GetControversialReservedCustomIDs()
 }
 
-// Get received custom IID.
-func (s *spvservice) GetReceivedCustomIDs() (map[string]common.Uint168, error) {
-	return s.db.CID().GetReceivedCustomIDs()
+// Get controversial received custom ID.
+func (s *spvservice) GeControversialReceivedCustomIDs() (map[string]common.Uint168, error) {
+	return s.db.CID().GetControversialReceivedCustomIDs()
 }
 
 // Get rate of custom ID fee.
@@ -274,13 +274,13 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		nakedBatch := batch.GetNakedBatch()
 		switch p.ProposalType {
 		case payload.ReserveCustomID:
-			err := s.db.CID().BatchPutReservedCustomIDs(
+			err := s.db.CID().BatchPutControversialReservedCustomIDs(
 				p.ReservedCustomIDList, nakedBatch)
 			if err != nil {
 				return false, err
 			}
 		case payload.ReceiveCustomID:
-			err := s.db.CID().BatchPutReceivedCustomIDs(
+			err := s.db.CID().BatchPutControversialReceivedCustomIDs(
 				p.ReceivedCustomIDList, p.ReceiverDID, nakedBatch)
 			if err != nil {
 				return false, err
