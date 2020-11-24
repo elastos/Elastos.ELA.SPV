@@ -264,12 +264,17 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		nakedBatch := batch.GetNakedBatch()
 		switch p.ProposalType {
 		case payload.ReserveCustomID:
-			err := s.db.CID().BatchPut(p.ReservedCustomIDList, nakedBatch)
+			err := s.db.CID().BatchPutReservedCustomIDs(
+				p.ReservedCustomIDList, nakedBatch)
 			if err != nil {
 				return false, err
 			}
 		case payload.ReceiveCustomID:
-			// todo complete me
+			err := s.db.CID().BatchPutReceivedCustomIDs(
+				p.ReceivedCustomIDList, p.ReceiverDID, nakedBatch)
+			if err != nil {
+				return false, err
+			}
 		case payload.ChangeCustomIDFee:
 			// todo complete me
 		}
