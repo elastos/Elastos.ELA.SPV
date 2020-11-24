@@ -14,6 +14,7 @@ var _ CustomID = (*customID)(nil)
 
 var BKTReservedCustomID = []byte("RS")
 var BKTReceivedCustomID = []byte("RC")
+var BKTChangeCustomIDFee = []byte("CF")
 
 type customID struct {
 	batch
@@ -52,6 +53,38 @@ func (c *customID) PutReceivedCustomIDs(reservedCustomIDs []string, did common.U
 		return err
 	}
 	return c.db.Write(batch, nil)
+}
+
+func (c *customID) PutRChangeCustomIDFee(rate common.Fixed64) error {
+	c.Lock()
+	defer c.Unlock()
+	batch := new(leveldb.Batch)
+	if err := c.batchPutPutChangeCustomIDFee(rate, batch); err != nil {
+		return err
+	}
+	return c.db.Write(batch, nil)
+}
+
+func (c *customID) BatchPutReservedCustomIDs(reservedCustomIDs []string, batch *leveldb.Batch) error {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.batchPutReservedCustomIDs(reservedCustomIDs, batch)
+}
+
+func (c *customID) BatchPutReceivedCustomIDs(receeivedCustomIDs []string,
+	did common.Uint168, batch *leveldb.Batch) error {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.batchPutReceivedCustomIDs(receeivedCustomIDs, did, batch)
+}
+
+func (c *customID) BatchPutChangeCustomIDFee(rate common.Fixed64, batch *leveldb.Batch) error {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.batchPutPutChangeCustomIDFee(rate, batch)
 }
 
 func (c *customID) batchPutReservedCustomIDs(reservedCustomIDs []string, batch *leveldb.Batch) error {
@@ -129,19 +162,13 @@ func (c *customID) batchPutReceivedCustomIDs(receivedCustomIDs []string,
 	return nil
 }
 
-func (c *customID) BatchPutReservedCustomIDs(reservedCustomIDs []string, batch *leveldb.Batch) error {
-	c.Lock()
-	defer c.Unlock()
-
-	return c.batchPutReservedCustomIDs(reservedCustomIDs, batch)
-}
-
-func (c *customID) BatchPutReceivedCustomIDs(receeivedCustomIDs []string,
-	did common.Uint168, batch *leveldb.Batch) error {
-	c.Lock()
-	defer c.Unlock()
-
-	return c.batchPutReceivedCustomIDs(receeivedCustomIDs, did, batch)
+func (c *customID) batchPutPutChangeCustomIDFee(rate common.Fixed64, batch *leveldb.Batch) error {
+	w := new(bytes.Buffer)
+	if err := rate.Serialize(w); err != nil {
+		return err
+	}
+	batch.Put(BKTChangeCustomIDFee, w.Bytes())
+	return nil
 }
 
 func (c *customID) GetReservedCustomIDs() (map[string]struct{}, error) {
@@ -154,6 +181,12 @@ func (c *customID) GetReceivedCustomIDs() (map[string]common.Uint168, error) {
 	c.RLock()
 	defer c.RUnlock()
 	return c.getReceivedCustomIDs()
+}
+
+func (c *customID) GetCustomIDFeeRate() (common.Fixed64, error) {
+	c.RLock()
+	defer c.RUnlock()
+	return c.getCustomIDFeeRate()
 }
 
 func (c *customID) getReservedCustomIDs() (map[string]struct{}, error) {
@@ -230,6 +263,20 @@ func (c *customID) getReceivedCustomIDs() (map[string]common.Uint168, error) {
 	// refresh the cache.
 	c.receivedCustomIDs = ids
 	return ids, nil
+}
+
+func (c *customID) getCustomIDFeeRate() (common.Fixed64, error) {
+	var val []byte
+	val, err := c.db.Get(BKTChangeCustomIDFee, nil)
+	if err != nil {
+		return 0, err
+	}
+	r := bytes.NewReader(val)
+	var rate common.Fixed64
+	if err := rate.Deserialize(r); err != nil {
+		return 0, err
+	}
+	return rate, nil
 }
 
 func (c *customID) Close() error {
