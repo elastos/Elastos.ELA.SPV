@@ -70,6 +70,12 @@ type SPVService interface {
 	// GetReservedCustomIDs query all reserved custom ID.
 	GetReservedCustomIDs() (map[string]struct{}, error)
 
+	// GetReceivedCustomIDs query all received custom ID.
+	GetReceivedCustomIDs() (map[string]common.Uint168, error)
+
+	// GetRateOfCustomIDFee query current rate of custom ID fee.
+	GetRateOfCustomIDFee() (common.Fixed64, error)
+
 	// GetBlockListener Get block listener
 	GetBlockListener() BlockListener
 

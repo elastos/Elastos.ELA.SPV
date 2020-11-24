@@ -193,14 +193,24 @@ func (s *spvservice) GetTransaction(txId *common.Uint256) (*types.Transaction, e
 	return &tx, nil
 }
 
-//Get arbiters according to height
+// Get arbiters according to height
 func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	return s.db.Arbiters().GetByHeight(height)
 }
 
-//Get arbiters according to height
+// Get reserved custom ID.
 func (s *spvservice) GetReservedCustomIDs() (map[string]struct{}, error) {
 	return s.db.CID().GetReservedCustomIDs()
+}
+
+// Get received custom IID.
+func (s *spvservice) GetReceivedCustomIDs() (map[string]common.Uint168, error) {
+	return s.db.CID().GetReceivedCustomIDs()
+}
+
+// Get rate of custom ID fee.
+func (s *spvservice) GetRateOfCustomIDFee() (common.Fixed64, error) {
+	return s.db.CID().GetCustomIDFeeRate()
 }
 
 func (s *spvservice) GetTransactionIds(height uint32) ([]*common.Uint256, error) {
