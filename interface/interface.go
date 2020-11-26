@@ -67,11 +67,11 @@ type SPVService interface {
 	// GetArbiters Get arbiters according to height
 	GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 
-	// GetControversialReservedCustomIDs query all controversial reserved custom ID.
-	GetControversialReservedCustomIDs() (map[string]struct{}, error)
+	// GetReservedCustomIDs query all controversial reserved custom ID.
+	GetReservedCustomIDs() (map[string]struct{}, error)
 
-	// GeControversialReceivedCustomIDs query all controversial received custom ID.
-	GeControversialReceivedCustomIDs() (map[string]common.Uint168, error)
+	// GeReceivedCustomIDs query all controversial received custom ID.
+	GeReceivedCustomIDs() (map[string]common.Uint168, error)
 
 	// GetRateOfCustomIDFee query current rate of custom ID fee.
 	GetRateOfCustomIDFee() (common.Fixed64, error)
