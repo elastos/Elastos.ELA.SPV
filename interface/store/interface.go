@@ -7,6 +7,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -129,16 +130,23 @@ type Arbiters interface {
 
 type CustomID interface {
 	database.DB
-	PutControversialReservedCustomIDs(reservedCustomIDs []string) error
-	BatchPutControversialReservedCustomIDs(reservedCustomIDs []string, batch *leveldb.Batch) error
+	PutControversialReservedCustomIDs(
+		reservedCustomIDs []string, proposalHash common.Uint256) error
+	BatchPutControversialReservedCustomIDs(reservedCustomIDs []string,
+		proposalHash common.Uint256, batch *leveldb.Batch) error
 
-	PutControversialReceivedCustomIDs(reservedCustomIDs []string, did common.Uint168) error
-	BatchPutControversialReceivedCustomIDs(receivedCustomIDs []string, did common.Uint168, batch *leveldb.Batch) error
+	PutControversialReceivedCustomIDs(reservedCustomIDs []string,
+		did common.Uint168, proposalHash common.Uint256) error
+	BatchPutControversialReceivedCustomIDs(receivedCustomIDs []string,
+		did common.Uint168, proposalHash common.Uint256, batch *leveldb.Batch) error
 
-	PutRChangeCustomIDFee(rate common.Fixed64) error
-	BatchPutChangeCustomIDFee(rate common.Fixed64, batch *leveldb.Batch) error
+	PutControversialChangeCustomIDFee(rate common.Fixed64, proposalHash common.Uint256) error
+	BatchPutControversialChangeCustomIDFee(rate common.Fixed64, proposalHash common.Uint256, batch *leveldb.Batch) error
 
-	GetControversialReservedCustomIDs() (map[string]struct{}, error)
-	GetControversialReceivedCustomIDs() (map[string]common.Uint168, error)
+	PutCustomIDProposalResults(results []payload.ProposalResult) error
+	BatchPutCustomIDProposalResults(results []payload.ProposalResult, batch *leveldb.Batch) error
+
+	GetReservedCustomIDs() (map[string]struct{}, error)
+	GetReceivedCustomIDs() (map[string]common.Uint168, error)
 	GetCustomIDFeeRate() (common.Fixed64, error)
 }
