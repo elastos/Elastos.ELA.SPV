@@ -106,6 +106,14 @@ func (c *arbiters) Get() (crcArbiters [][]byte, normalArbiters [][]byte, err err
 	return c.GetByHeight(c.getCurrentPosition())
 }
 
+func (c *arbiters) GetNext() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error) {
+	c.RLock()
+	defer c.RUnlock()
+	workingHeight = c.getCurrentPosition()
+	crcArbiters, normalArbiters, err = c.get(c.getCurrentPosition())
+	return
+}
+
 func (c *arbiters) get(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	var val []byte
 	val, err = c.db.Get(getIndex(height), nil)

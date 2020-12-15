@@ -125,6 +125,7 @@ type Arbiters interface {
 	Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte) error
 	BatchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error
 	Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error)
+	GetNext() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 }
 
