@@ -110,7 +110,7 @@ func (c *arbiters) GetNext() (workingHeight uint32, crcArbiters [][]byte, normal
 	c.RLock()
 	defer c.RUnlock()
 	workingHeight = c.getCurrentPosition()
-	crcArbiters, normalArbiters, err = c.get(c.getCurrentPosition())
+	crcArbiters, normalArbiters, err = c.get(workingHeight)
 	return
 }
 
