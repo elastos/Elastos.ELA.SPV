@@ -198,6 +198,11 @@ func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArb
 	return s.db.Arbiters().GetByHeight(height)
 }
 
+// Get next turn arbiters according to height
+func (s *spvservice) GetNextArbiters() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error) {
+	return s.db.Arbiters().GetNext()
+}
+
 // Get reserved custom ID.
 func (s *spvservice) GetReservedCustomIDs() (map[string]struct{}, error) {
 	return s.db.CID().GetReservedCustomIDs()
