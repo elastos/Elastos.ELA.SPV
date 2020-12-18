@@ -63,7 +63,15 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 	}
 	batch.Put(BKTArbPosition, uint32toBytes(height))
 	if !isRollback {
-		c.posCache = append(c.getCurrentPositions(), height)
+		posCache := c.getCurrentPositions()
+		newPosCache := make([]uint32, 0)
+		for _, p := range posCache {
+			if p < height {
+				newPosCache = append(newPosCache, p)
+			}
+		}
+		newPosCache = append(newPosCache, height)
+		c.posCache = newPosCache
 		batch.Put(BKTArbPositions, uint32ArrayToBytes(c.posCache))
 	}
 	data := getValueBytes(crcArbiters, normalArbiters)
@@ -110,7 +118,7 @@ func (c *arbiters) GetNext() (workingHeight uint32, crcArbiters [][]byte, normal
 	c.RLock()
 	defer c.RUnlock()
 	workingHeight = c.getCurrentPosition()
-	crcArbiters, normalArbiters, err = c.get(c.getCurrentPosition())
+	crcArbiters, normalArbiters, err = c.get(workingHeight)
 	return
 }
 
