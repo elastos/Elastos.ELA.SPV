@@ -127,6 +127,8 @@ type Arbiters interface {
 	Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	GetNext() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
+	BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight uint32, mode byte) error
+	GetConsensusAlgorithmByHeight(height uint32) (byte, error)
 }
 
 type CustomID interface {
