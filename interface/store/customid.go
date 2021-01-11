@@ -17,6 +17,9 @@ var _ CustomID = (*customID)(nil)
 var BKTReservedCustomID = []byte("RS")
 var BKTReceivedCustomID = []byte("RC")
 var BKTChangeCustomIDFee = []byte("CF")
+var BKTLastCustomIDFee = []byte("CH")
+
+const DefaultFeeRate common.Fixed64 = 1e8
 
 type customID struct {
 	batch
@@ -36,6 +39,7 @@ func NewCustomID(db *leveldb.DB) *customID {
 		cache:             make(map[common.Uint256]uint32),
 		reservedCustomIDs: make(map[string]struct{}, 0),
 		receivedCustomIDs: make(map[string]common.Uint168, 0),
+		feeRate:           common.Fixed64(0),
 	}
 }
 
@@ -92,6 +96,13 @@ func (c *customID) BatchPutControversialReservedCustomIDs(
 	return c.batchPutControversialReservedCustomIDs(reservedCustomIDs, proposalHash, batch)
 }
 
+func (c *customID) BatchDeleteControversialReservedCustomIDs(
+	proposalHash common.Uint256, batch *leveldb.Batch) {
+	c.Lock()
+	defer c.Unlock()
+	batch.Delete(toKey(BKTReservedCustomID, proposalHash.Bytes()...))
+}
+
 func (c *customID) BatchPutControversialReceivedCustomIDs(receivedCustomIDs []string,
 	did common.Uint168, proposalHash common.Uint256, batch *leveldb.Batch) error {
 	c.Lock()
@@ -100,12 +111,28 @@ func (c *customID) BatchPutControversialReceivedCustomIDs(receivedCustomIDs []st
 	return c.batchPutControversialReceivedCustomIDs(receivedCustomIDs, did, proposalHash, batch)
 }
 
+func (c *customID) BatchDeleteControversialReceivedCustomIDs(
+	proposalHash common.Uint256, batch *leveldb.Batch) {
+	c.Lock()
+	defer c.Unlock()
+
+	batch.Delete(toKey(BKTReceivedCustomID, proposalHash.Bytes()...))
+}
+
 func (c *customID) BatchPutControversialChangeCustomIDFee(rate common.Fixed64,
 	proposalHash common.Uint256, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
 
 	return c.batchPutControversialChangeCustomIDFee(rate, proposalHash, batch)
+}
+
+func (c *customID) BatchDeleteControversialChangeCustomIDFee(
+	proposalHash common.Uint256, batch *leveldb.Batch) {
+	c.Lock()
+	defer c.Unlock()
+
+	batch.Delete(toKey(BKTChangeCustomIDFee, proposalHash.Bytes()...))
 }
 
 func (c *customID) BatchPutCustomIDProposalResults(
@@ -144,7 +171,8 @@ func (c *customID) batchPutCustomIDProposalResults(
 					return err
 				}
 			} else {
-				c.removeControversialReservedCustomIDsFromDB(r.ProposalHash, batch)
+				// if you need to remove data from db, you need to consider rollback.
+				//c.removeControversialReservedCustomIDsFromDB(r.ProposalHash, batch)
 			}
 
 		case payload.ReceiveCustomID:
@@ -170,15 +198,17 @@ func (c *customID) batchPutCustomIDProposalResults(
 					return err
 				}
 			} else {
-				c.removeControversialReceivedCustomIDsFromDB(r.ProposalHash, batch)
+				// if you need to remove data from db, you need to consider rollback.
+				//c.removeControversialReceivedCustomIDsFromDB(r.ProposalHash, batch)
 			}
 
 		case payload.ChangeCustomIDFee:
 			// initialize cache.
 			if c.feeRate == 0 {
-				feeRate, err := c.getCustomIDFeeRateFromDB()
-				if err != nil {
-					return err
+				feeRate, _ := c.getCustomIDFeeRateFromDB()
+				// todo consider other errors
+				if feeRate == 0 {
+					feeRate = DefaultFeeRate
 				}
 				c.feeRate = feeRate
 			}
@@ -188,14 +218,18 @@ func (c *customID) batchPutCustomIDProposalResults(
 				if err != nil {
 					return err
 				}
-				c.feeRate = rate
 
 				// update db.
+				if err := c.batchPutLastCustomIDFee(batch, r.ProposalHash); err != nil {
+					return err
+				}
+				c.feeRate = rate
 				if err := c.batchPutChangeCustomIDFee(batch); err != nil {
 					return err
 				}
 			} else {
-				c.removeControversialCustomIDFeeRate(r.ProposalHash, batch)
+				// if you need to remove data from db, you need to consider rollback.
+				//c.removeControversialCustomIDFeeRate(r.ProposalHash, batch)
 			}
 		}
 	}
@@ -236,7 +270,8 @@ func (c *customID) batchPutReservedCustomIDs(batch *leveldb.Batch) error {
 }
 
 func (c *customID) batchPutControversialReceivedCustomIDs(
-	receivedCustomIDs []string, did common.Uint168, proposalHash common.Uint256, batch *leveldb.Batch) error {
+	receivedCustomIDs []string, did common.Uint168,
+	proposalHash common.Uint256, batch *leveldb.Batch) error {
 	w := new(bytes.Buffer)
 	err := common.WriteUint32(w, uint32(len(receivedCustomIDs)))
 	if err != nil {
@@ -289,6 +324,34 @@ func (c *customID) batchPutChangeCustomIDFee(batch *leveldb.Batch) error {
 	}
 	batch.Put(BKTChangeCustomIDFee, w.Bytes())
 	return nil
+
+}
+
+func (c *customID) batchPutLastCustomIDFee(batch *leveldb.Batch,
+	proposalHash common.Uint256) error {
+	w := new(bytes.Buffer)
+	if err := c.feeRate.Serialize(w); err != nil {
+		return err
+	}
+	batch.Put(toKey(BKTLastCustomIDFee, proposalHash.Bytes()...), w.Bytes())
+	return nil
+}
+
+func (c *customID) gutLastCustomIDFee(proposalHash common.Uint256) (common.Fixed64, error) {
+	key := toKey(BKTLastCustomIDFee, proposalHash.Bytes()...)
+	var val []byte
+	val, err := c.db.Get(key, nil)
+	if err != nil {
+		return 0, err
+	}
+	r := bytes.NewReader(val)
+	var feeRate common.Fixed64
+	err = feeRate.Deserialize(r)
+	if err != nil {
+		return 0, err
+	}
+
+	return feeRate, nil
 }
 
 func (c *customID) GetReservedCustomIDs() (map[string]struct{}, error) {
@@ -448,9 +511,10 @@ func (c *customID) getCustomIDFeeRate() (common.Fixed64, error) {
 	if c.feeRate != 0 {
 		return c.feeRate, nil
 	}
-	feeRate, err := c.getCustomIDFeeRateFromDB()
-	if err != nil {
-		return 0, err
+	feeRate, _ := c.getCustomIDFeeRateFromDB()
+	// todo consider other errors
+	if feeRate == 0 {
+		feeRate = DefaultFeeRate
 	}
 	c.feeRate = feeRate
 	return feeRate, nil
