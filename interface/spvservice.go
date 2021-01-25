@@ -228,7 +228,7 @@ func (s *spvservice) GetReservedCustomIDs() (map[string]struct{}, error) {
 }
 
 // Get received custom ID.
-func (s *spvservice) GeReceivedCustomIDs() (map[string]common.Uint168, error) {
+func (s *spvservice) GetReceivedCustomIDs() (map[string]common.Uint168, error) {
 	return s.db.CID().GetReceivedCustomIDs()
 }
 

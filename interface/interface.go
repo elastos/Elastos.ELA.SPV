@@ -80,8 +80,8 @@ type SPVService interface {
 	// GetReservedCustomIDs query all controversial reserved custom ID.
 	GetReservedCustomIDs() (map[string]struct{}, error)
 
-	// GeReceivedCustomIDs query all controversial received custom ID.
-	GeReceivedCustomIDs() (map[string]common.Uint168, error)
+	// GetReceivedCustomIDs query all controversial received custom ID.
+	GetReceivedCustomIDs() (map[string]common.Uint168, error)
 
 	// GetRateOfCustomIDFee query current rate of custom ID fee.
 	GetRateOfCustomIDFee() (common.Fixed64, error)
