@@ -154,8 +154,9 @@ func (c *customID) batchPutCustomIDProposalResults(
 				existedCustomIDs, err := c.getReservedCustomIDsFromDB()
 				if err != nil {
 					return err
+				}else{
+					c.reservedCustomIDs = existedCustomIDs
 				}
-				c.reservedCustomIDs = existedCustomIDs
 			}
 			if r.Result == true {
 				// update cache.
@@ -181,8 +182,9 @@ func (c *customID) batchPutCustomIDProposalResults(
 				existedCustomIDs, err := c.getReceivedCustomIDsFromDB()
 				if err != nil {
 					return err
+				}else{
+					c.receivedCustomIDs = existedCustomIDs
 				}
-				c.receivedCustomIDs = existedCustomIDs
 			}
 			if r.Result == true {
 				// update cache.
@@ -255,6 +257,7 @@ func (c *customID) batchPutControversialReservedCustomIDs(
 
 func (c *customID) batchPutReservedCustomIDs(batch *leveldb.Batch) error {
 	// store reserved custom ID.
+
 	w := new(bytes.Buffer)
 	err := common.WriteVarUint(w, uint64(len(c.reservedCustomIDs)))
 	if err != nil {
@@ -393,12 +396,12 @@ func (c *customID) getControversialReservedCustomIDsFromDB(proposalHash common.U
 		return nil, err
 	}
 	r := bytes.NewReader(val)
-	count, err := common.ReadUint32(r)
+	count, err := common.ReadVarUint(r,0)
 	if err != nil {
 		return nil, err
 	}
 	reservedCustomIDs := make(map[string]struct{}, 0)
-	for i := uint32(0); i < count; i++ {
+	for i := uint64(0); i < count; i++ {
 		id, err := common.ReadVarString(r)
 		if err != nil {
 			return nil, err
@@ -417,6 +420,9 @@ func (c *customID) getReservedCustomIDsFromDB() (map[string]struct{}, error) {
 	var val []byte
 	val, err := c.db.Get(BKTReservedCustomID, nil)
 	if err != nil {
+		if err.Error() != leveldb.ErrNotFound.Error() {
+			return nil,nil
+		}
 		return nil, err
 	}
 	r := bytes.NewReader(val)
@@ -471,6 +477,9 @@ func (c *customID) getReceivedCustomIDsFromDB() (map[string]common.Uint168, erro
 	var val []byte
 	val, err := c.db.Get(BKTReceivedCustomID, nil)
 	if err != nil {
+		if err.Error() != leveldb.ErrNotFound.Error() {
+			return nil,nil
+		}
 		return nil, err
 	}
 	r := bytes.NewReader(val)
@@ -524,6 +533,9 @@ func (c *customID) getCustomIDFeeRateFromDB() (common.Fixed64, error) {
 	var val []byte
 	val, err := c.db.Get(BKTChangeCustomIDFee, nil)
 	if err != nil {
+		if err.Error() != leveldb.ErrNotFound.Error() {
+			return 0,nil
+		}
 		return 0, err
 	}
 	r := bytes.NewReader(val)
