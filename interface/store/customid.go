@@ -420,7 +420,7 @@ func (c *customID) getReservedCustomIDsFromDB() (map[string]struct{}, error) {
 	var val []byte
 	val, err := c.db.Get(BKTReservedCustomID, nil)
 	if err != nil {
-		if err.Error() != leveldb.ErrNotFound.Error() {
+		if err.Error() == leveldb.ErrNotFound.Error() {
 			return nil,nil
 		}
 		return nil, err
@@ -477,7 +477,7 @@ func (c *customID) getReceivedCustomIDsFromDB() (map[string]common.Uint168, erro
 	var val []byte
 	val, err := c.db.Get(BKTReceivedCustomID, nil)
 	if err != nil {
-		if err.Error() != leveldb.ErrNotFound.Error() {
+		if err.Error() == leveldb.ErrNotFound.Error() {
 			return nil,nil
 		}
 		return nil, err
@@ -533,7 +533,7 @@ func (c *customID) getCustomIDFeeRateFromDB() (common.Fixed64, error) {
 	var val []byte
 	val, err := c.db.Get(BKTChangeCustomIDFee, nil)
 	if err != nil {
-		if err.Error() != leveldb.ErrNotFound.Error() {
+		if err.Error() == leveldb.ErrNotFound.Error() {
 			return 0,nil
 		}
 		return 0, err
