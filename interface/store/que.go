@@ -55,6 +55,9 @@ func (q *que) GetAll() (items []*QueItem, err error) {
 		var item QueItem
 		var lastNotify int64
 		value := subKey(BKTQue, it.Key())
+		if len(value) < 64 {
+			continue
+		}
 		copy(item.NotifyId[:], value[:32])
 		copy(item.TxId[:], value[32:])
 		buf := bytes.NewReader(it.Value())

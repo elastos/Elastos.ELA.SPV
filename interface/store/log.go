@@ -1,12 +1,5 @@
-package _interface
-
+package store
 import (
-	"github.com/elastos/Elastos.ELA.SPV/blockchain"
-	iStore "github.com/elastos/Elastos.ELA.SPV/interface/store"
-	"github.com/elastos/Elastos.ELA.SPV/peer"
-	"github.com/elastos/Elastos.ELA.SPV/sdk"
-	"github.com/elastos/Elastos.ELA.SPV/sync"
-	"github.com/elastos/Elastos.ELA.SPV/wallet/store"
 	"github.com/elastos/Elastos.ELA/utils/elalog"
 )
 
@@ -31,10 +24,4 @@ func DisableLog() {
 // using elalog.
 func UseLogger(logger elalog.Logger) {
 	log = logger
-	blockchain.UseLogger(logger)
-	sdk.UseLogger(logger)
-	peer.UseLogger(logger)
-	store.UseLogger(logger)
-	sync.UseLogger(logger)
-	iStore.UseLogger(logger)
 }
