@@ -18,6 +18,7 @@ type dataStore struct {
 	ops   *ops
 	que   *que
 	ars   *arbiters
+	cid   *customID
 }
 
 func NewDataStore(dataDir string, originArbiters [][]byte, arbitersCount int) (*dataStore, error) {
@@ -41,6 +42,7 @@ func NewDataStore(dataDir string, originArbiters [][]byte, arbitersCount int) (*
 		ops:   NewOps(db),
 		que:   NewQue(db),
 		ars:   NewArbiters(db, originArbiters, arbitersCount),
+		cid:   NewCustomID(db),
 	}, nil
 }
 
@@ -64,10 +66,15 @@ func (d *dataStore) Arbiters() Arbiters {
 	return d.ars
 }
 
+func (d *dataStore) CID() CustomID {
+	return d.cid
+}
+
 func (d *dataStore) Batch() DataBatch {
 	return &dataBatch{
-		DB:    d.db,
-		Batch: new(leveldb.Batch),
+		DB:       d.db,
+		customID: d.cid,
+		Batch:    new(leveldb.Batch),
 	}
 }
 
@@ -97,5 +104,6 @@ func (d *dataStore) Close() error {
 	d.ops.Close()
 	d.que.Close()
 	d.ars.Close()
+	d.cid.Close()
 	return d.db.Close()
 }
