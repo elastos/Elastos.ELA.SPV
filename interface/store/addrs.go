@@ -10,6 +10,10 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+var (
+	BKTAddrs = []byte("A")
+)
+
 // Ensure addrs implement Addrs interface.
 var _ Addrs = (*addrs)(nil)
 

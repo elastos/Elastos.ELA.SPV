@@ -172,9 +172,6 @@ func TestArbiters(t *testing.T) {
 		return
 	}
 
-
-
-
 }
 
 func checkExist(target [][]byte, src [][]byte) bool {

@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	empty = make([]byte, 0)
+	BKTQue    = []byte("Q")
+	BKTQueIdx = []byte("U")
+	empty     = make([]byte, 0)
 )
 
 // Ensure que implement Que interface.
