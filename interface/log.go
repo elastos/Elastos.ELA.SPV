@@ -2,7 +2,6 @@ package _interface
 
 import (
 	"github.com/elastos/Elastos.ELA.SPV/blockchain"
-	iStore "github.com/elastos/Elastos.ELA.SPV/interface/store"
 	"github.com/elastos/Elastos.ELA.SPV/peer"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/sync"
@@ -36,5 +35,4 @@ func UseLogger(logger elalog.Logger) {
 	peer.UseLogger(logger)
 	store.UseLogger(logger)
 	sync.UseLogger(logger)
-	iStore.UseLogger(logger)
 }
