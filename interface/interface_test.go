@@ -47,7 +47,8 @@ func (l *TxListener) Flags() uint64 {
 }
 
 func (l *TxListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx types.Transaction) {
-	l.log.Infof("Notify Type %s, TxID %s", tx.TxType.Name(), tx.Hash())
+	l.log.Infof("Notify Type %s, TxID %s, Height %d",
+		tx.TxType.Name(), tx.Hash(), proof.Height)
 	err := l.service.VerifyTransaction(proof, tx)
 	if !assert.NoError(l.t, err) {
 		l.t.FailNow()
@@ -143,7 +144,7 @@ func TestNewSPVService(t *testing.T) {
 	sync.UseLogger(synclog)
 
 	cfg := &Config{
-		ChainParams: config.DefaultParams.TestNet(),
+		ChainParams: &config.DefaultParams,
 	}
 
 	service, err := NewSPVService(cfg)
@@ -155,7 +156,7 @@ func TestNewSPVService(t *testing.T) {
 		t:       t,
 		log:     listlog,
 		service: service,
-		address: "8ZNizBf4KhhPjeJRGpox6rPcHE5Np6tFx3",
+		address: "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
 		txType:  types.CoinBase,
 		flags:   FlagNotifyConfirmed | FlagNotifyInSyncing,
 	}
@@ -164,7 +165,7 @@ func TestNewSPVService(t *testing.T) {
 		t:       t,
 		log:     listlog,
 		service: service,
-		address: "8ZNizBf4KhhPjeJRGpox6rPcHE5Np6tFx3",
+		address: "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
 		txType:  types.TransferAsset,
 		flags:   0,
 	}
