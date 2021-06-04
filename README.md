@@ -1,44 +1,44 @@
 # Elastos SPV
 
 ## Summary
-Elastos SPV is a SDK of SPV (Simplified Payment Verification) implementation of the Elastos digital currency.
-The Elastos SPV SDK is a set of encryption algorithm, peer to peer network and SPV related implementation like bloom filter, merkleblock and util methods.
-As an example, this project include a spv wallet implementation located in `spvwallet` folder, it will help you understand how to use this SDK and build your own apps.
-The flowing instructions will help you get into the SDK and build up the `spvwallet` sample APP and play with it.
+Elastos SPV is an SDK of SPV (Simplified Payment Verification) implementation of the Elastos digital currency.
+The Elastos SPV SDK comprises encryption algorithms, peer-to-peer networks, and SPV-related implementations like bloom filter, merkleblock, and util methods.
+For example, this project includes an SPV wallet implementation located in the `spvwallet` folder, and it will help you understand how to use this SDK and build your apps.
+The following instructions will help you get into the SDK, build up the `spvwallet` sample App and play with it.
 
 ## SDK (Software Development Kit)
 
 1. Account (sdk/account.go)
-A ELA standard account is a set of private key, public key, redeem script, program hash and address data.
-redeem script is (script content length)+(script content)+(script type),
+A ELA standard account is a set of private key, public key, redeem script, program hash, and address data.
+Redeem script is (script content length)+(script content)+(script type),
 program hash is the sha256 value of redeem script and converted to ripemd160 format with a (Type) prefix.
-address is the base58 format of program hash, which is the string value show up on user interface as account address.
-With account, you can get the transfer address or sign transaction etc.
+The address is the base58 format of program hash, which is the string value on the user interface as an account address.
+With an account, you can get the transfer address or sign a transaction, etc.
 
 2. AddrFilter (sdk/addrfilter.go)
-This is a helper class to filter interested addresses when synchronize transactions
-or get cached addresses list to build a bloom filter instead of load addresses from database every time.
+This is a helper class to filter interested addresses when synchronizing transactions
+or get cached addresses list to build a bloom filter instead of load addresses from the database.
 
 3. Blockchain (sdk/blockchain.go)
-Blockchain is the database of blocks, also when a new transaction or block commit, Blockchain will verify them with stored blocks.
+Blockchain is the block database; also, when a new transaction or block commit, Blockchain will verify them with stored blocks.
 
 4. BloomFilter (sdk/bloom.go)
-[Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) is a probabilistic data structure which allows for testing set membership - they can have false positives but not false negatives.
-Before synchronize blocks, a `FilterLoad` message need to be sent to the sync peer to filter which transactions should be included in the `merkleblock` message.
+[Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter) is a probabilistic data structure that allows for the testing set membership - they can have false positives but not false negatives.
+Before synchronizing blocks, a `FilterLoad` message must be sent to the sync peer to filter which transactions should be included in the `merkleblock` message.
 
 5. Crypto (sdk/crypto.go)
-This file is the sample code of creating private key, public key and account with ECDSA algorithm.
+This file is the sample code creating private key, public key, and account with the ECDSA algorithm.
 
 6. P2P client (sdk/p2pclient.go)
-P2P client is a low level interface to interactive with the peer to peer network, you need to creating and responding messages all by yourself except handshake.
+P2P client is a low-level interface to interact with the peer-to-peer network. You need to creating and responding messages all by yourself except handshake.
 
 7. SPV client (sdk/spvclient.go)
-SPV client is a full interface of all SPV messages in the peer to peer network, it will help you create and receive SPV messages and keep heartbeat with the connected peers.
+SPV client is a complete interface of all SPV messages in the peer-to-peer network. It will help you create and receive SPV messages and keep a heartbeat with the connected peers.
 
 8. SPV service (sdk/spvservice.go)
-SPV service is a high level implementation with all SPV logic implemented.
-SPV service is extend from SPV client and implement Blockchain and block synchronize on it.
-With SPV service, you just need to implement your own DataStore and GetBloomFilter() method, and let other stuff go.
+SPV service is a high-level implementation with all SPV logic implemented.
+SPV service extends from SPV client and implements Blockchain and block synchronize on it.
+With SPV service, you need to implement your DataStore and GetBloomFilter() method and let others go.
 
 ## Build and Run `spvwallet` sample APP
 
