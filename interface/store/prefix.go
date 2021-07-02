@@ -32,4 +32,15 @@ var (
 	BKTRevertPosition  = []byte("revertp")
 	BKTRevertPositions = []byte("revertps")
 	BKTConsensus       = []byte("consensus")
+
+	// custom ID
+	BKTReservedCustomID  = []byte("RS")
+	BKTReceivedCustomID  = []byte("RC")
+	BKTChangeCustomIDFee = []byte("CF")
+	BKTLastCustomIDFee   = []byte("CH")
+
+	// upgrade code
+	BKTUpgradeControversial = []byte("upgradectl")
+	BKTUpgradeCode          = []byte("upgradecode")
+	BKTUpgradePositions     = []byte("upgradepts")
 )

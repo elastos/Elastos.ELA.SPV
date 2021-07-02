@@ -105,6 +105,5 @@ func (q *que) Clear() error {
 }
 
 func (q *que) Close() error {
-	q.Lock()
 	return nil
 }

@@ -30,6 +30,10 @@ const (
 	// notifyTimeout is the duration to timeout a notify to the listener, and
 	// resend the notify to the listener.
 	notifyTimeout = 10 * time.Second // 10 second
+
+	// upgrade side chain proposal type
+	minUpgradeProposalType = 0x0200
+	maxUpgradeProposalType = 0x02ff
 )
 
 type ConsensusAlgorithm byte
@@ -47,10 +51,12 @@ type spvservice struct {
 	listeners      map[common.Uint256]TransactionListener
 	revertListener RevertListener
 	blockListener  BlockListener
-	//FilterType is the filter type .(FTBloom, FTDPOS  and so on )
+	// FilterType is the filter type .(FTBloom, FTDPOS  and so on )
 	filterType uint8
 	// p2p  Protocol version height  use to change version msg content
 	NewP2PProtocolVersionHeight uint64
+	// the upgrade ProposalType
+	UpgradeProposalType uint16
 }
 
 // NewSPVService creates a new SPV service instance.
@@ -329,6 +335,13 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 				p.RateOfCustomIDFee, p.Hash(tx.PayloadVersion), nakedBatch); err != nil {
 				return false, err
 			}
+		default:
+			if p.ProposalType > minUpgradeProposalType && p.ProposalType <= maxUpgradeProposalType {
+				if err := s.db.Upgrade().BatchPutControversialUpgrade(
+					p.Hash(tx.PayloadVersion), p.UpgradeCodeInfo, tx.PayloadVersion, nakedBatch); err != nil {
+					return false, err
+				}
+			}
 		}
 	case types.CustomIDResult:
 		p, ok := tx.Payload.(*payload.CustomIDProposalResult)
@@ -336,9 +349,21 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 			return false, errors.New("invalid custom ID result tx")
 		}
 		nakedBatch := batch.GetNakedBatch()
-		err := s.db.CID().BatchPutCustomIDProposalResults(p.ProposalResults, nakedBatch)
-		if err != nil {
-			return false, err
+		for _, r := range p.ProposalResults {
+			switch r.ProposalType {
+			case payload.ReceiveCustomID, payload.ReserveCustomID, payload.ChangeCustomIDFee:
+				err := s.db.CID().BatchPutCustomIDProposalResult(r, nakedBatch)
+				if err != nil {
+					return false, err
+				}
+			default:
+				if r.ProposalType > minUpgradeProposalType && r.ProposalType <= maxUpgradeProposalType {
+					err := s.db.Upgrade().BatchPutUpgradeProposalResult(r, nakedBatch)
+					if err != nil {
+						return false, err
+					}
+				}
+			}
 		}
 	}
 

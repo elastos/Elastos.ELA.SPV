@@ -173,7 +173,6 @@ func (c *arbiters) GetByHeight(height uint32) (crcArbiters [][]byte, normalArbit
 }
 
 func (c *arbiters) Close() error {
-	c.Lock()
 	return nil
 }
 
