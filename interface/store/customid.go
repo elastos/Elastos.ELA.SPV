@@ -556,22 +556,29 @@ func (c *customID) Clear() error {
 
 	batch := new(leveldb.Batch)
 	it := c.db.NewIterator(util.BytesPrefix(BKTReservedCustomID), nil)
-	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
 	}
+	it.Release()
 
 	it = c.db.NewIterator(util.BytesPrefix(BKTReceivedCustomID), nil)
-	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
 	}
+	it.Release()
 
 	it = c.db.NewIterator(util.BytesPrefix(BKTChangeCustomIDFee), nil)
-	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
 	}
+	it.Release()
+
+	it = c.db.NewIterator(util.BytesPrefix(BKTLastCustomIDFee), nil)
+	for it.Next() {
+		batch.Delete(it.Key())
+	}
+	it.Release()
+
 	return c.db.Write(c.b, nil)
 }
 

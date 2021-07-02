@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
+	dbutil "github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -11,7 +12,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-// Ensure arbiters implement arbiters interface.
+// Ensure upgrade implement Upgrade interface.
 var _ Upgrade = (*upgrade)(nil)
 
 type upgrade struct {
@@ -23,7 +24,22 @@ type upgrade struct {
 }
 
 func (u *upgrade) Clear() error {
-	panic("implement me")
+	u.Lock()
+	defer u.Unlock()
+	it := u.db.NewIterator(dbutil.BytesPrefix(BKTUpgradeControversial), nil)
+	for it.Next() {
+		u.b.Delete(it.Key())
+	}
+	it.Release()
+	it = u.db.NewIterator(dbutil.BytesPrefix(BKTUpgradeCode), nil)
+	for it.Next() {
+		u.b.Delete(it.Key())
+	}
+	it.Release()
+
+	u.b.Delete(BKTUpgradePositions)
+
+	return u.db.Write(u.b, nil)
 }
 
 func (u *upgrade) Close() error {
@@ -80,7 +96,7 @@ func (u *upgrade) batchPutUpgradeResult(proposalHash common.Uint256, batch *leve
 	}
 	newPosCache = append(newPosCache, info.WorkingHeight)
 	u.posCache = newPosCache
-	batch.Put(BKTArbPositions, uint32ArrayToBytes(u.posCache))
+	batch.Put(BKTUpgradePositions, uint32ArrayToBytes(u.posCache))
 
 	index := getIndex(info.WorkingHeight)
 	batch.Put(toKey(BKTUpgradeCode, index...), data)
