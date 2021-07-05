@@ -99,6 +99,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		listeners:                   make(map[common.Uint256]TransactionListener),
 		filterType:                  cfg.FilterType,
 		NewP2PProtocolVersionHeight: cfg.ChainParams.NewP2PProtocolVersionHeight,
+		UpgradeProposalType:         cfg.UpgradeProposalType,
 	}
 
 	chainStore := database.NewChainDB(headerStore, service)
