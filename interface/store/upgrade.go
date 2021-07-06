@@ -86,6 +86,10 @@ func (u *upgrade) batchPutUpgradeResult(proposalHash common.Uint256, batch *leve
 		return err
 	}
 
+	if !info.ForceUpgrade {
+		return nil
+	}
+
 	// update current positions
 	posCache := u.getCurrentPositions()
 	newPosCache := make([]uint32, 0)
