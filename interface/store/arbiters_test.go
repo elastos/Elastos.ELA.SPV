@@ -171,10 +171,6 @@ func TestArbiters(t *testing.T) {
 		t.Errorf("crc arbiter can not be found")
 		return
 	}
-
-
-
-
 }
 
 func checkExist(target [][]byte, src [][]byte) bool {

@@ -19,6 +19,7 @@ type dataStore struct {
 	que   *que
 	ars   *arbiters
 	cid   *customID
+	upg   *upgrade
 }
 
 func NewDataStore(dataDir string, originArbiters [][]byte, arbitersCount int) (*dataStore, error) {
@@ -43,6 +44,7 @@ func NewDataStore(dataDir string, originArbiters [][]byte, arbitersCount int) (*
 		que:   NewQue(db),
 		ars:   NewArbiters(db, originArbiters, arbitersCount),
 		cid:   NewCustomID(db),
+		upg:   NewUpgrade(db),
 	}, nil
 }
 
@@ -68,6 +70,10 @@ func (d *dataStore) Arbiters() Arbiters {
 
 func (d *dataStore) CID() CustomID {
 	return d.cid
+}
+
+func (d *dataStore) Upgrade() Upgrade {
+	return d.upg
 }
 
 func (d *dataStore) Batch() DataBatch {

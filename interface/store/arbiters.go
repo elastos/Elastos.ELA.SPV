@@ -173,7 +173,6 @@ func (c *arbiters) GetByHeight(height uint32) (crcArbiters [][]byte, normalArbit
 }
 
 func (c *arbiters) Close() error {
-	c.Lock()
 	return nil
 }
 
@@ -181,11 +180,22 @@ func (c *arbiters) Clear() error {
 	c.Lock()
 	defer c.Unlock()
 	it := c.db.NewIterator(dbutil.BytesPrefix(BKTArbiters), nil)
-	defer it.Release()
 	for it.Next() {
 		c.b.Delete(it.Key())
 	}
+	it.Release()
 	c.b.Delete(BKTArbPosition)
+	c.b.Delete(BKTArbPositions)
+	it = c.db.NewIterator(dbutil.BytesPrefix(BKTArbitersData), nil)
+	for it.Next() {
+		c.b.Delete(it.Key())
+	}
+	it.Release()
+	it = c.db.NewIterator(dbutil.BytesPrefix(BKTTransactionHeight), nil)
+	for it.Next() {
+		c.b.Delete(it.Key())
+	}
+	it.Release()
 	return c.db.Write(c.b, nil)
 }
 

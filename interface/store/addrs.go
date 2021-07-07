@@ -83,6 +83,5 @@ func (a *addrs) Clear() error {
 }
 
 func (a *addrs) Close() error {
-	a.Lock()
 	return nil
 }

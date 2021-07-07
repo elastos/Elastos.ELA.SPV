@@ -25,6 +25,7 @@ type DataStore interface {
 	Que() Que
 	Arbiters() Arbiters
 	CID() CustomID
+	Upgrade() Upgrade
 	Batch() DataBatch
 }
 
@@ -154,10 +155,18 @@ type CustomID interface {
 	BatchDeleteControversialChangeCustomIDFee(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
-	PutCustomIDProposalResults(results []payload.ProposalResult) error
-	BatchPutCustomIDProposalResults(results []payload.ProposalResult, batch *leveldb.Batch) error
+	BatchPutCustomIDProposalResult(result payload.ProposalResult, batch *leveldb.Batch) error
 
 	GetReservedCustomIDs() (map[string]struct{}, error)
 	GetReceivedCustomIDs() (map[string]common.Uint168, error)
 	GetCustomIDFeeRate() (common.Fixed64, error)
+}
+
+type Upgrade interface {
+	database.DB
+
+	BatchPutControversialUpgrade(proposalHash common.Uint256, info *payload.UpgradeCodeInfo, version byte, batch *leveldb.Batch) error
+	BatchPutUpgradeProposalResult(result payload.ProposalResult, batch *leveldb.Batch) error
+
+	GetByHeight(height uint32) (info *payload.UpgradeCodeInfo, err error)
 }

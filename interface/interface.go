@@ -24,11 +24,14 @@ type Config struct {
 	// on the given height has been rollback
 	OnRollback func(height uint32)
 
-	//FilterType is the filter type .(FTBloom, FTDPOS  and so on )
+	// FilterType is the filter type .(FTBloom, FTDPOS  and so on )
 	FilterType uint8
 
-	//node version
+	// Node version
 	NodeVersion string
+	
+	// Upgrade proposal type
+	UpgradeProposalType uint16
 }
 
 /*

@@ -14,11 +14,6 @@ import (
 // Ensure customID implement CustomID interface.
 var _ CustomID = (*customID)(nil)
 
-var BKTReservedCustomID = []byte("RS")
-var BKTReceivedCustomID = []byte("RC")
-var BKTChangeCustomIDFee = []byte("CF")
-var BKTLastCustomIDFee = []byte("CH")
-
 const DefaultFeeRate common.Fixed64 = 1e8
 
 type customID struct {
@@ -77,17 +72,6 @@ func (c *customID) PutControversialChangeCustomIDFee(rate common.Fixed64, propos
 	return c.db.Write(batch, nil)
 }
 
-func (c *customID) PutCustomIDProposalResults(
-	results []payload.ProposalResult) error {
-	c.Lock()
-	defer c.Unlock()
-	batch := new(leveldb.Batch)
-	if err := c.batchPutCustomIDProposalResults(results, batch); err != nil {
-		return err
-	}
-	return c.db.Write(batch, nil)
-}
-
 func (c *customID) BatchPutControversialReservedCustomIDs(
 	reservedCustomIDs []string, proposalHash common.Uint256, batch *leveldb.Batch) error {
 	c.Lock()
@@ -135,104 +119,102 @@ func (c *customID) BatchDeleteControversialChangeCustomIDFee(
 	batch.Delete(toKey(BKTChangeCustomIDFee, proposalHash.Bytes()...))
 }
 
-func (c *customID) BatchPutCustomIDProposalResults(
-	results []payload.ProposalResult, batch *leveldb.Batch) error {
+func (c *customID) BatchPutCustomIDProposalResult(
+	result payload.ProposalResult, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
 
-	return c.batchPutCustomIDProposalResults(results, batch)
+	return c.batchPutCustomIDProposalResult(result, batch)
 }
 
-func (c *customID) batchPutCustomIDProposalResults(
-	results []payload.ProposalResult, batch *leveldb.Batch) error {
+func (c *customID) batchPutCustomIDProposalResult(
+	result payload.ProposalResult, batch *leveldb.Batch) error {
 	// add new reserved custom ID into cache.
-	for _, r := range results {
-		switch r.ProposalType {
-		case payload.ReserveCustomID:
-			// initialize cache.
-			if len(c.reservedCustomIDs) == 0 {
-				existedCustomIDs, err := c.getReservedCustomIDsFromDB()
-				if err != nil {
-					return err
-				}else{
-					c.reservedCustomIDs = existedCustomIDs
-				}
-			}
-			if r.Result == true {
-				// update cache.
-				reservedCustomIDs, err := c.getControversialReservedCustomIDsFromDB(r.ProposalHash)
-				if err != nil {
-					return err
-				}
-				for k, v := range reservedCustomIDs {
-					c.reservedCustomIDs[k] = v
-				}
-				// update db.
-				if err := c.batchPutReservedCustomIDs(batch); err != nil {
-					return err
-				}
+	switch result.ProposalType {
+	case payload.ReserveCustomID:
+		// initialize cache.
+		if len(c.reservedCustomIDs) == 0 {
+			existedCustomIDs, err := c.getReservedCustomIDsFromDB()
+			if err != nil {
+				return err
 			} else {
-				// if you need to remove data from db, you need to consider rollback.
-				//c.removeControversialReservedCustomIDsFromDB(r.ProposalHash, batch)
+				c.reservedCustomIDs = existedCustomIDs
 			}
+		}
+		if result.Result == true {
+			// update cache.
+			reservedCustomIDs, err := c.getControversialReservedCustomIDsFromDB(result.ProposalHash)
+			if err != nil {
+				return err
+			}
+			for k, v := range reservedCustomIDs {
+				c.reservedCustomIDs[k] = v
+			}
+			// update db.
+			if err := c.batchPutReservedCustomIDs(batch); err != nil {
+				return err
+			}
+		} else {
+			// if you need to remove data from db, you need to consider rollback.
+			//c.removeControversialReservedCustomIDsFromDB(r.ProposalHash, batch)
+		}
 
-		case payload.ReceiveCustomID:
-			// initialize cache.
-			if len(c.receivedCustomIDs) == 0 {
-				existedCustomIDs, err := c.getReceivedCustomIDsFromDB()
-				if err != nil {
-					return err
-				}else{
-					c.receivedCustomIDs = existedCustomIDs
-				}
-			}
-			if r.Result == true {
-				// update cache.
-				receivedCustomIDs, err := c.getControversialReceivedCustomIDsFromDB(r.ProposalHash)
-				if err != nil {
-					return err
-				}
-				for k, v := range receivedCustomIDs {
-					c.receivedCustomIDs[k] = v
-				}
-				// update db.
-				if err := c.batchPutReceivedCustomIDs(batch); err != nil {
-					return err
-				}
+	case payload.ReceiveCustomID:
+		// initialize cache.
+		if len(c.receivedCustomIDs) == 0 {
+			existedCustomIDs, err := c.getReceivedCustomIDsFromDB()
+			if err != nil {
+				return err
 			} else {
-				// if you need to remove data from db, you need to consider rollback.
-				//c.removeControversialReceivedCustomIDsFromDB(r.ProposalHash, batch)
+				c.receivedCustomIDs = existedCustomIDs
+			}
+		}
+		if result.Result == true {
+			// update cache.
+			receivedCustomIDs, err := c.getControversialReceivedCustomIDsFromDB(result.ProposalHash)
+			if err != nil {
+				return err
+			}
+			for k, v := range receivedCustomIDs {
+				c.receivedCustomIDs[k] = v
+			}
+			// update db.
+			if err := c.batchPutReceivedCustomIDs(batch); err != nil {
+				return err
+			}
+		} else {
+			// if you need to remove data from db, you need to consider rollback.
+			//c.removeControversialReceivedCustomIDsFromDB(r.ProposalHash, batch)
+		}
+
+	case payload.ChangeCustomIDFee:
+		// initialize cache.
+		if c.feeRate == 0 {
+			feeRate, _ := c.getCustomIDFeeRateFromDB()
+			// todo consider other errors
+			if feeRate == 0 {
+				feeRate = DefaultFeeRate
+			}
+			c.feeRate = feeRate
+		}
+
+		if result.Result == true {
+			rate, err := c.getControversialCustomIDFeeRate(result.ProposalHash)
+			if err != nil {
+				return err
 			}
 
-		case payload.ChangeCustomIDFee:
-			// initialize cache.
-			if c.feeRate == 0 {
-				feeRate, _ := c.getCustomIDFeeRateFromDB()
-				// todo consider other errors
-				if feeRate == 0 {
-					feeRate = DefaultFeeRate
-				}
-				c.feeRate = feeRate
+			// update db.
+			if err := c.batchPutLastCustomIDFee(batch, result.ProposalHash); err != nil {
+				return err
 			}
-
-			if r.Result == true {
-				rate, err := c.getControversialCustomIDFeeRate(r.ProposalHash)
-				if err != nil {
-					return err
-				}
-
-				// update db.
-				if err := c.batchPutLastCustomIDFee(batch, r.ProposalHash); err != nil {
-					return err
-				}
-				c.feeRate = rate
-				if err := c.batchPutChangeCustomIDFee(batch); err != nil {
-					return err
-				}
-			} else {
-				// if you need to remove data from db, you need to consider rollback.
-				//c.removeControversialCustomIDFeeRate(r.ProposalHash, batch)
+			c.feeRate = rate
+			if err := c.batchPutChangeCustomIDFee(batch); err != nil {
+				return err
 			}
+		} else {
+			// if you need to remove data from db, you need to consider rollback.
+			//c.removeControversialCustomIDFeeRate(r.ProposalHash, batch)
 		}
 	}
 	return nil
@@ -396,7 +378,7 @@ func (c *customID) getControversialReservedCustomIDsFromDB(proposalHash common.U
 		return nil, err
 	}
 	r := bytes.NewReader(val)
-	count, err := common.ReadVarUint(r,0)
+	count, err := common.ReadVarUint(r, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +515,7 @@ func (c *customID) getCustomIDFeeRateFromDB() (common.Fixed64, error) {
 	val, err := c.db.Get(BKTChangeCustomIDFee, nil)
 	if err != nil {
 		if err.Error() == leveldb.ErrNotFound.Error() {
-			return 0,nil
+			return 0, nil
 		}
 		return 0, err
 	}
@@ -565,7 +547,6 @@ func (c *customID) removeControversialCustomIDFeeRate(
 }
 
 func (c *customID) Close() error {
-	c.Lock()
 	return nil
 }
 
@@ -575,22 +556,29 @@ func (c *customID) Clear() error {
 
 	batch := new(leveldb.Batch)
 	it := c.db.NewIterator(util.BytesPrefix(BKTReservedCustomID), nil)
-	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
 	}
+	it.Release()
 
 	it = c.db.NewIterator(util.BytesPrefix(BKTReceivedCustomID), nil)
-	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
 	}
+	it.Release()
 
 	it = c.db.NewIterator(util.BytesPrefix(BKTChangeCustomIDFee), nil)
-	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
 	}
+	it.Release()
+
+	it = c.db.NewIterator(util.BytesPrefix(BKTLastCustomIDFee), nil)
+	for it.Next() {
+		batch.Delete(it.Key())
+	}
+	it.Release()
+
 	return c.db.Write(c.b, nil)
 }
 
