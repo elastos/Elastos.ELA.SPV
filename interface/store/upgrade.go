@@ -23,6 +23,15 @@ type upgrade struct {
 	posCache []uint32
 }
 
+func (u *upgrade) Commit() error {
+	return u.db.Write(u.b, nil)
+}
+
+func (u *upgrade) Rollback() error {
+	u.b.Reset()
+	return nil
+}
+
 func (u *upgrade) Clear() error {
 	u.Lock()
 	defer u.Unlock()
@@ -75,7 +84,7 @@ func (u *upgrade) getCurrentPositions() []uint32 {
 	return nil
 }
 
-func (u *upgrade) BatchDeleteControversialUpgrade(proposalHash common.Uint256, batch *leveldb.Batch) error {
+func (u *upgrade) batchDeleteControversialUpgrade(proposalHash common.Uint256, batch *leveldb.Batch) error {
 	batch.Delete(toKey(BKTUpgradeControversial, proposalHash.Bytes()...))
 	return nil
 }
@@ -125,7 +134,7 @@ func (u *upgrade) batchPutUpgradeProposalResults(
 	}
 
 	// remove controversial upgrade information
-	if err := u.BatchDeleteControversialUpgrade(result.ProposalHash, batch); err != nil {
+	if err := u.batchDeleteControversialUpgrade(result.ProposalHash, batch); err != nil {
 		return err
 	}
 	return nil
@@ -196,5 +205,5 @@ func (u *upgrade) getControversialUpgradeInfoByProposalHash(proposalHash common.
 		return nil, nil, err
 	}
 
-	return info, nil, nil
+	return info, data, nil
 }

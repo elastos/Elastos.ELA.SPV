@@ -166,8 +166,6 @@ type Upgrade interface {
 	database.DB
 
 	BatchPutControversialUpgrade(proposalHash common.Uint256, info *payload.UpgradeCodeInfo, version byte, batch *leveldb.Batch) error
-	BatchDeleteControversialUpgrade(proposalHash common.Uint256, batch *leveldb.Batch) error
-
 	BatchPutUpgradeProposalResult(result payload.ProposalResult, batch *leveldb.Batch) error
 
 	GetByHeight(height uint32) (info *payload.UpgradeCodeInfo, err error)
