@@ -334,7 +334,7 @@ func (c *arbiters) GetConsensusAlgorithmByHeight(height uint32) (byte, error) {
 	var modeHeight uint32
 	for _, p := range pos {
 		if p > height {
-
+			break
 		}
 		modeHeight = p
 	}
