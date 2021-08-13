@@ -331,7 +331,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 			}
 		}
 	case types.ProposalResult:
-		p, ok := tx.Payload.(*payload.CustomIDProposalResult)
+		p, ok := tx.Payload.(*payload.RecordProposalResult)
 		if !ok {
 			return false, errors.New("invalid custom ID result tx")
 		}
