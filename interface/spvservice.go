@@ -219,6 +219,7 @@ func (s *spvservice) GetNextArbiters() (workingHeight uint32, crcArbiters [][]by
 // Get consensus algorithm by height.
 func (s *spvservice) GetConsensusAlgorithm(height uint32) (ConsensusAlgorithm, error) {
 	mode, err := s.db.Arbiters().GetConsensusAlgorithmByHeight(height)
+	log.Infof("### GetConsensusAlgorithm at height %d consensus is %s", height, string(mode))
 	return ConsensusAlgorithm(mode), err
 }
 
@@ -283,6 +284,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 	switch tx.TxType {
 	case types.RevertToPOW:
 		revertToPOW := tx.Payload.(*payload.RevertToPOW)
+		log.Info("### RevertToPOW at height:", revertToPOW.WorkingHeight)
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.Arbiters().BatchPutRevertTransaction(
 			nakedBatch, revertToPOW.WorkingHeight, byte(POW))
@@ -291,6 +293,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		}
 	case types.RevertToDPOS:
 		revertToDPOS := tx.Payload.(*payload.RevertToDPOS)
+		log.Info("### RevertToDPOS at height:", height+revertToDPOS.WorkHeightInterval)
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.Arbiters().BatchPutRevertTransaction(
 			nakedBatch, height+revertToDPOS.WorkHeightInterval, byte(DPOS))
