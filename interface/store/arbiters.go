@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"github.com/elastos/Elastos.ELA/dpos/log"
 	"sort"
 	"sync"
 
@@ -332,8 +331,6 @@ func (c *arbiters) GetConsensusAlgorithmByHeight(height uint32) (byte, error) {
 		pos = c.revertPOSCache
 	}
 
-	log.Info("### GetConsensusAlgorithmByHeight pos:", pos)
-
 	var modeHeight uint32
 	for _, p := range pos {
 		if p > height {
@@ -352,8 +349,6 @@ func (c *arbiters) GetConsensusAlgorithmByHeight(height uint32) (byte, error) {
 	if len(mode) != 1 {
 		return 0, errors.New("failed to get consensus mode")
 	}
-
-	log.Info("### GetConsensusAlgorithmByHeight mode:", mode[0])
 
 	return mode[0], nil
 }
