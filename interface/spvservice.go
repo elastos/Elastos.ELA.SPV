@@ -219,7 +219,11 @@ func (s *spvservice) GetNextArbiters() (workingHeight uint32, crcArbiters [][]by
 // Get consensus algorithm by height.
 func (s *spvservice) GetConsensusAlgorithm(height uint32) (ConsensusAlgorithm, error) {
 	mode, err := s.db.Arbiters().GetConsensusAlgorithmByHeight(height)
-	log.Infof("### GetConsensusAlgorithm at height %d consensus is %s", height, string(mode))
+	if err != nil {
+		log.Infof("### GetConsensusAlgorithm at height %d, err:", height, err)
+	} else {
+		log.Info("### GetConsensusAlgorithm at height", height, "consensus is ", mode)
+	}
 	return ConsensusAlgorithm(mode), err
 }
 
