@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -171,10 +172,62 @@ func TestArbiters(t *testing.T) {
 		t.Errorf("crc arbiter can not be found")
 		return
 	}
+}
 
+func TestArbiters_BatchPutRevertTransaction(t *testing.T) {
 
+	dataDir := "spv_test"
+	os.RemoveAll(dataDir)
 
+	db, err := leveldb.OpenFile(filepath.Join(dataDir, "store"), nil)
+	if err != nil {
+		println(err.Error())
+	}
 
+	originArbiters := []string{
+		"02089d7e878171240ce0e3633d3ddc8b1128bc221f6b5f0d1551caa717c7493062",
+		"0268214956b8421c0621d62cf2f0b20a02c2dc8c2cc89528aff9bd43b45ed34b9f",
+		"03cce325c55057d2c8e3fb03fb5871794e73b85821e8d0f96a7e4510b4a922fad5",
+		"02661637ae97c3af0580e1954ee80a7323973b256ca862cfcf01b4a18432670db4",
+		"027d816821705e425415eb64a9704f25b4cd7eaca79616b0881fc92ac44ff8a46b",
+		"02d4a8f5016ae22b1acdf8a2d72f6eb712932213804efd2ce30ca8d0b9b4295ac5",
+		"029a4d8e4c99a1199f67a25d79724e14f8e6992a0c8b8acf102682bd8f500ce0c1",
+		"02871b650700137defc5d34a11e56a4187f43e74bb078e147dd4048b8f3c81209f",
+		"02fc66cba365f9957bcb2030e89a57fb3019c57ea057978756c1d46d40dfdd4df0",
+		"03e3fe6124a4ea269224f5f43552250d627b4133cfd49d1f9e0283d0cd2fd209bc",
+		"02b95b000f087a97e988c24331bf6769b4a75e4b7d5d2a38105092a3aa841be33b",
+		"02a0aa9eac0e168f3474c2a0d04e50130833905740a5270e8a44d6c6e85cf6d98c",
+	}
+	var origincrcs [][]byte
+	for _, v := range originArbiters {
+		crc, _ := hex.DecodeString(v)
+		origincrcs = append(origincrcs, crc)
+	}
+	arbiters := NewArbiters(db, origincrcs, 36)
+
+	batch := new(leveldb.Batch)
+	err = arbiters.BatchPutRevertTransaction(
+		batch, 300, byte(0x01))
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
+		return
+	}
+	arbiters.CommitBatch(batch)
+
+ 	err = arbiters.BatchPutRevertTransaction(
+		batch, 500, byte(0x00))
+	if err != nil {
+		t.Errorf("put arbiter error %s", err.Error())
+		return
+	}
+	arbiters.CommitBatch(batch)
+
+	mode, err := arbiters.GetConsensusAlgorithmByHeight(600)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fmt.Println(mode)
 }
 
 func checkExist(target [][]byte, src [][]byte) bool {

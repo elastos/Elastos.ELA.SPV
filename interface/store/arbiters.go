@@ -357,7 +357,7 @@ func (c *arbiters) BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight
 	c.Lock()
 	defer c.Unlock()
 
-	pos := c.getCurrentPosition()
+	pos := c.getCurrentRevertPosition()
 	var isRollback bool
 	if workingHeight <= pos {
 		isRollback = true
