@@ -403,10 +403,12 @@ func (c *customID) removeControversialReservedCustomIDsFromDB(
 
 func (c *customID) getReservedCustomIDsFromDB() (map[string]struct{}, error) {
 	var val []byte
+	//if return no err,reservedCustomIDs also allocated
+	reservedCustomIDs := make(map[string]struct{}, 0)
 	val, err := c.db.Get(BKTReservedCustomID, nil)
 	if err != nil {
 		if err.Error() == leveldb.ErrNotFound.Error() {
-			return nil, nil
+			return reservedCustomIDs, nil
 		}
 		return nil, err
 	}
@@ -415,7 +417,6 @@ func (c *customID) getReservedCustomIDsFromDB() (map[string]struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	reservedCustomIDs := make(map[string]struct{}, 0)
 	for i := uint32(0); i < count; i++ {
 		id, err := common.ReadVarString(r)
 		if err != nil {
@@ -460,10 +461,12 @@ func (c *customID) removeControversialReceivedCustomIDsFromDB(
 
 func (c *customID) getReceivedCustomIDsFromDB() (map[string]common.Uint168, error) {
 	var val []byte
+	receiedCustomIDs := make(map[string]common.Uint168, 0)
+
 	val, err := c.db.Get(BKTReceivedCustomID, nil)
 	if err != nil {
 		if err.Error() == leveldb.ErrNotFound.Error() {
-			return nil, nil
+			return receiedCustomIDs, nil
 		}
 		return nil, err
 	}
@@ -472,7 +475,6 @@ func (c *customID) getReceivedCustomIDsFromDB() (map[string]common.Uint168, erro
 	if err != nil {
 		return nil, err
 	}
-	receiedCustomIDs := make(map[string]common.Uint168, 0)
 	for i := uint32(0); i < count; i++ {
 		id, err := common.ReadVarString(r)
 		if err != nil {
