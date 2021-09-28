@@ -327,7 +327,7 @@ func (c *customID) batchPutChangeCustomIDFee(batch *leveldb.Batch, feeRate commo
 	}
 	newPosCache = append(newPosCache, workingHeight)
 	c.customIDFeePosCache = newPosCache
-	batch.Put(BKTRevertPositions, uint32ArrayToBytes(c.customIDFeePosCache))
+	batch.Put(BKTCustomIDFeePositions, uint32ArrayToBytes(c.customIDFeePosCache))
 
 	buf := new(bytes.Buffer)
 	if err := common.WriteUint32(buf, workingHeight); err != nil {
