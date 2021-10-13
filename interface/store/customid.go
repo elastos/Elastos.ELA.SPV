@@ -413,11 +413,11 @@ func (c *customID) getReservedCustomIDsFromDB() (map[string]struct{}, error) {
 		return nil, err
 	}
 	r := bytes.NewReader(val)
-	count, err := common.ReadUint32(r)
+	count, err := common.ReadVarUint(r, 0)
 	if err != nil {
 		return nil, err
 	}
-	for i := uint32(0); i < count; i++ {
+	for i := uint64(0); i < count; i++ {
 		id, err := common.ReadVarString(r)
 		if err != nil {
 			return nil, err
