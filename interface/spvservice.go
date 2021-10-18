@@ -228,8 +228,8 @@ func (s *spvservice) GetReservedCustomIDs(height uint32) (map[string]struct{}, e
 }
 
 // Get received custom ID.
-func (s *spvservice) GetReceivedCustomIDs() (map[string]common.Uint168, error) {
-	return s.db.CID().GetReceivedCustomIDs()
+func (s *spvservice) GetReceivedCustomIDs(height uint32) (map[string]common.Uint168, error) {
+	return s.db.CID().GetReceivedCustomIDs(height)
 }
 
 // Get rate of custom ID fee.
@@ -335,7 +335,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 			}
 		case payload.ReceiveCustomID:
 			err := s.db.CID().BatchPutControversialReceivedCustomIDs(
-				p.ReceivedCustomIDList, p.ReceiverDID, p.Hash(tx.PayloadVersion), nakedBatch)
+				p.ReceivedCustomIDList, p.ReceiverDID, p.Hash(tx.PayloadVersion), height, nakedBatch)
 			if err != nil {
 				return false, err
 			}
