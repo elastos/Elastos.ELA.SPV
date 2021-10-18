@@ -142,9 +142,9 @@ type CustomID interface {
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
 	PutControversialReceivedCustomIDs(reservedCustomIDs []string,
-		did common.Uint168, proposalHash common.Uint256) error
+		did common.Uint168, proposalHash common.Uint256, height uint32) error
 	BatchPutControversialReceivedCustomIDs(receivedCustomIDs []string,
-		did common.Uint168, proposalHash common.Uint256, batch *leveldb.Batch) error
+		did common.Uint168, proposalHash common.Uint256, height uint32, batch *leveldb.Batch) error
 	BatchDeleteControversialReceivedCustomIDs(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
@@ -162,7 +162,7 @@ type CustomID interface {
 	BatchPutCustomIDProposalResults(results []payload.ProposalResult, batch *leveldb.Batch) error
 
 	GetReservedCustomIDs(height uint32) (map[string]struct{}, error)
-	GetReceivedCustomIDs() (map[string]common.Uint168, error)
+	GetReceivedCustomIDs(height uint32) (map[string]common.Uint168, error)
 	GetCustomIDFeeRate(height uint32) (common.Fixed64, error)
 	//Is this RetSideChainDepositCoin tx exist
 	HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool
