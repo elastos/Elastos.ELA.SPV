@@ -7,8 +7,8 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -135,9 +135,9 @@ type Arbiters interface {
 type CustomID interface {
 	database.DB
 	PutControversialReservedCustomIDs(
-		reservedCustomIDs []string, proposalHash common.Uint256) error
+		reservedCustomIDs []string, proposalHash common.Uint256, height uint32) error
 	BatchPutControversialReservedCustomIDs(reservedCustomIDs []string,
-		proposalHash common.Uint256, batch *leveldb.Batch) error
+		proposalHash common.Uint256, height uint32, batch *leveldb.Batch) error
 	BatchDeleteControversialReservedCustomIDs(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
@@ -151,7 +151,6 @@ type CustomID interface {
 	BatchPutRetSideChainDepositCoinTx(tx *types.Transaction, batch *leveldb.Batch) error
 	BatchDeleteRetSideChainDepositCoinTx(tx *types.Transaction, batch *leveldb.Batch) error
 
-
 	PutControversialChangeCustomIDFee(rate common.Fixed64,
 		proposalHash common.Uint256, workingHeight uint32) error
 	BatchPutControversialChangeCustomIDFee(rate common.Fixed64,
@@ -162,9 +161,9 @@ type CustomID interface {
 	PutCustomIDProposalResults(results []payload.ProposalResult) error
 	BatchPutCustomIDProposalResults(results []payload.ProposalResult, batch *leveldb.Batch) error
 
-	GetReservedCustomIDs() (map[string]struct{}, error)
+	GetReservedCustomIDs(height uint32) (map[string]struct{}, error)
 	GetReceivedCustomIDs() (map[string]common.Uint168, error)
 	GetCustomIDFeeRate(height uint32) (common.Fixed64, error)
 	//Is this RetSideChainDepositCoin tx exist
-	HaveRetSideChainDepositCoinTx(txHash common.Uint256)bool
+	HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool
 }

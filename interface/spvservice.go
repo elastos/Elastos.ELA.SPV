@@ -223,8 +223,8 @@ func (s *spvservice) GetConsensusAlgorithm(height uint32) (ConsensusAlgorithm, e
 }
 
 // Get reserved custom ID.
-func (s *spvservice) GetReservedCustomIDs() (map[string]struct{}, error) {
-	return s.db.CID().GetReservedCustomIDs()
+func (s *spvservice) GetReservedCustomIDs(height uint32) (map[string]struct{}, error) {
+	return s.db.CID().GetReservedCustomIDs(height)
 }
 
 // Get received custom ID.
@@ -329,7 +329,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		switch p.ProposalType {
 		case payload.ReserveCustomID:
 			err := s.db.CID().BatchPutControversialReservedCustomIDs(
-				p.ReservedCustomIDList, p.Hash(tx.PayloadVersion), nakedBatch)
+				p.ReservedCustomIDList, p.Hash(tx.PayloadVersion), height, nakedBatch)
 			if err != nil {
 				return false, err
 			}
