@@ -135,16 +135,16 @@ type Arbiters interface {
 type CustomID interface {
 	database.DB
 	PutControversialReservedCustomIDs(
-		reservedCustomIDs []string, proposalHash common.Uint256, height uint32) error
+		reservedCustomIDs []string, proposalHash common.Uint256) error
 	BatchPutControversialReservedCustomIDs(reservedCustomIDs []string,
-		proposalHash common.Uint256, height uint32, batch *leveldb.Batch) error
+		proposalHash common.Uint256, batch *leveldb.Batch) error
 	BatchDeleteControversialReservedCustomIDs(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
 	PutControversialReceivedCustomIDs(reservedCustomIDs []string,
-		did common.Uint168, proposalHash common.Uint256, height uint32) error
+		did common.Uint168, proposalHash common.Uint256) error
 	BatchPutControversialReceivedCustomIDs(receivedCustomIDs []string,
-		did common.Uint168, proposalHash common.Uint256, height uint32, batch *leveldb.Batch) error
+		did common.Uint168, proposalHash common.Uint256, batch *leveldb.Batch) error
 	BatchDeleteControversialReceivedCustomIDs(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
@@ -153,13 +153,14 @@ type CustomID interface {
 
 	PutControversialChangeCustomIDFee(rate common.Fixed64,
 		proposalHash common.Uint256, workingHeight uint32) error
+
 	BatchPutControversialChangeCustomIDFee(rate common.Fixed64,
 		proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error
 	BatchDeleteControversialChangeCustomIDFee(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
-	PutCustomIDProposalResults(results []payload.ProposalResult) error
-	BatchPutCustomIDProposalResults(results []payload.ProposalResult, batch *leveldb.Batch) error
+	PutCustomIDProposalResults(results []payload.ProposalResult, height uint32) error
+	BatchPutCustomIDProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
 
 	GetReservedCustomIDs(height uint32) (map[string]struct{}, error)
 	GetReceivedCustomIDs(height uint32) (map[string]common.Uint168, error)
