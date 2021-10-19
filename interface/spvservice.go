@@ -329,13 +329,13 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		switch p.ProposalType {
 		case payload.ReserveCustomID:
 			err := s.db.CID().BatchPutControversialReservedCustomIDs(
-				p.ReservedCustomIDList, p.Hash(tx.PayloadVersion), height, nakedBatch)
+				p.ReservedCustomIDList, p.Hash(tx.PayloadVersion), nakedBatch)
 			if err != nil {
 				return false, err
 			}
 		case payload.ReceiveCustomID:
 			err := s.db.CID().BatchPutControversialReceivedCustomIDs(
-				p.ReceivedCustomIDList, p.ReceiverDID, p.Hash(tx.PayloadVersion), height, nakedBatch)
+				p.ReceivedCustomIDList, p.ReceiverDID, p.Hash(tx.PayloadVersion), nakedBatch)
 			if err != nil {
 				return false, err
 			}
@@ -351,7 +351,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 			return false, errors.New("invalid custom ID result tx")
 		}
 		nakedBatch := batch.GetNakedBatch()
-		err := s.db.CID().BatchPutCustomIDProposalResults(p.ProposalResults, nakedBatch)
+		err := s.db.CID().BatchPutCustomIDProposalResults(p.ProposalResults, height, nakedBatch)
 		if err != nil {
 			return false, err
 		}
