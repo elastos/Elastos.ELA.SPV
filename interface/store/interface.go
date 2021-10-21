@@ -130,6 +130,7 @@ type Arbiters interface {
 	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight uint32, mode byte) error
 	GetConsensusAlgorithmByHeight(height uint32) (byte, error)
+	GetRevertInfo() []RevertInfo
 }
 
 type CustomID interface {
@@ -162,8 +163,8 @@ type CustomID interface {
 	PutCustomIDProposalResults(results []payload.ProposalResult, height uint32) error
 	BatchPutCustomIDProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
 
-	GetReservedCustomIDs(height uint32) (map[string]struct{}, error)
-	GetReceivedCustomIDs(height uint32) (map[string]common.Uint168, error)
+	GetReservedCustomIDs(height uint32, info []RevertInfo) (map[string]struct{}, error)
+	GetReceivedCustomIDs(height uint32, info []RevertInfo) (map[string]common.Uint168, error)
 	GetCustomIDFeeRate(height uint32) (common.Fixed64, error)
 	//Is this RetSideChainDepositCoin tx exist
 	HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool
