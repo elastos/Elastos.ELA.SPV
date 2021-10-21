@@ -9,6 +9,7 @@ import (
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/dpos/state"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
@@ -358,16 +359,16 @@ func (c *customID) batchPutChangeCustomIDFee(batch *leveldb.Batch, feeRate commo
 	return nil
 }
 
-func (c *customID) GetReservedCustomIDs(height uint32) (map[string]struct{}, error) {
+func (c *customID) GetReservedCustomIDs(height uint32, info []RevertInfo) (map[string]struct{}, error) {
 	c.RLock()
 	defer c.RUnlock()
-	return c.getReservedCustomIDs(height)
+	return c.getReservedCustomIDs(height, info)
 }
 
-func (c *customID) GetReceivedCustomIDs(height uint32) (map[string]common.Uint168, error) {
+func (c *customID) GetReceivedCustomIDs(height uint32, info []RevertInfo) (map[string]common.Uint168, error) {
 	c.RLock()
 	defer c.RUnlock()
-	return c.getReceivedCustomIDs(height)
+	return c.getReceivedCustomIDs(height, info)
 }
 
 func (c *customID) GetCustomIDFeeRate(height uint32) (common.Fixed64, error) {
@@ -376,7 +377,7 @@ func (c *customID) GetCustomIDFeeRate(height uint32) (common.Fixed64, error) {
 	return c.getCustomIDFeeRate(height)
 }
 
-func (c *customID) getReservedCustomIDs(height uint32) (map[string]struct{}, error) {
+func (c *customID) getReservedCustomIDs(height uint32, info []RevertInfo) (map[string]struct{}, error) {
 	if len(c.reservedCustomIDs) == 0 {
 		ids, err := c.getReservedCustomIDsFromDB()
 		if err != nil {
@@ -388,12 +389,70 @@ func (c *customID) getReservedCustomIDs(height uint32) (map[string]struct{}, err
 
 	results := make(map[string]struct{})
 	for k, v := range c.reservedCustomIDs {
-		if height < v+DefaultConfirmations {
+		confirmCount := getConfirmCount(height, v, info)
+		if confirmCount < DefaultConfirmations {
 			continue
 		}
 		results[k] = struct{}{}
 	}
 	return results, nil
+}
+
+func getConfirmCount(currentHeight, proposalHeight uint32, info []RevertInfo) uint32 {
+	if currentHeight <= proposalHeight {
+		return 0
+	}
+
+	var lastMode byte
+	var lastWorkingHeight uint32
+	var confirmCount uint32
+	var reachedTheEnd bool
+	var beganFromStartHeight bool
+	for _, r := range info {
+		if proposalHeight < r.WorkingHeight {
+			var calculateHeight uint32
+			if currentHeight < r.WorkingHeight {
+				calculateHeight = currentHeight
+				reachedTheEnd = true
+			} else {
+				calculateHeight = r.WorkingHeight
+			}
+
+			if lastMode == byte(state.DPOS) {
+				if proposalHeight > lastWorkingHeight {
+					confirmCount += calculateHeight - proposalHeight
+				} else {
+					confirmCount += calculateHeight - lastWorkingHeight
+				}
+			}
+			beganFromStartHeight = true
+		}
+
+		lastMode = r.Mode
+		lastWorkingHeight = r.WorkingHeight
+
+		if reachedTheEnd {
+			break
+		}
+	}
+
+	if lastMode == byte(state.DPOS) {
+		if !beganFromStartHeight {
+			confirmCount += currentHeight - proposalHeight
+		} else if !reachedTheEnd {
+			confirmCount += currentHeight - lastWorkingHeight
+		}
+	}
+
+	return confirmCount
+}
+
+func maxUint32(first, second uint32) uint32 {
+	if first < second {
+		return second
+	}
+
+	return first
 }
 
 func (c *customID) getControversialReservedCustomIDsFromDB(proposalHash common.Uint256) (map[string]struct{}, error) {
@@ -522,7 +581,7 @@ func (c *customID) getReceivedCustomIDsFromDB() (map[string]CustomIDInfo, error)
 	return receiedCustomIDs, nil
 }
 
-func (c *customID) getReceivedCustomIDs(height uint32) (map[string]common.Uint168, error) {
+func (c *customID) getReceivedCustomIDs(height uint32, info []RevertInfo) (map[string]common.Uint168, error) {
 	if len(c.receivedCustomIDs) == 0 {
 		ids, err := c.getReceivedCustomIDsFromDB()
 		if err != nil {
@@ -534,7 +593,8 @@ func (c *customID) getReceivedCustomIDs(height uint32) (map[string]common.Uint16
 
 	results := make(map[string]common.Uint168)
 	for k, v := range c.receivedCustomIDs {
-		if height < v.Height+DefaultConfirmations {
+		confirmCount := getConfirmCount(height, v.Height, info)
+		if confirmCount < DefaultConfirmations {
 			continue
 		}
 		results[k] = v.DID

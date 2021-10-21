@@ -368,6 +368,24 @@ func calcHash(data []byte) [32]byte {
 	return sha256.Sum256(data)
 }
 
+func (c *arbiters) GetRevertInfo() []RevertInfo {
+	c.RLock()
+	defer c.RUnlock()
+	var pos []RevertInfo
+	if len(c.revertPOSCache) == 0 {
+		var err error
+		pos, err = c.getCurrentRevertPositions()
+		if err != leveldb.ErrNotFound {
+			return pos
+		}
+		c.revertPOSCache = pos
+	} else {
+		pos = c.revertPOSCache
+	}
+
+	return pos
+}
+
 func (c *arbiters) GetConsensusAlgorithmByHeight(height uint32) (byte, error) {
 	c.RLock()
 	defer c.RUnlock()

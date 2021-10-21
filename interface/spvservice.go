@@ -224,12 +224,12 @@ func (s *spvservice) GetConsensusAlgorithm(height uint32) (ConsensusAlgorithm, e
 
 // Get reserved custom ID.
 func (s *spvservice) GetReservedCustomIDs(height uint32) (map[string]struct{}, error) {
-	return s.db.CID().GetReservedCustomIDs(height)
+	return s.db.CID().GetReservedCustomIDs(height, s.db.Arbiters().GetRevertInfo())
 }
 
 // Get received custom ID.
 func (s *spvservice) GetReceivedCustomIDs(height uint32) (map[string]common.Uint168, error) {
-	return s.db.CID().GetReceivedCustomIDs(height)
+	return s.db.CID().GetReceivedCustomIDs(height, s.db.Arbiters().GetRevertInfo())
 }
 
 // Get rate of custom ID fee.
