@@ -401,14 +401,15 @@ func (c *arbiters) GetConsensusAlgorithmByHeight(height uint32) (byte, error) {
 		pos = c.revertPOSCache
 	}
 
+	var revertInfo RevertInfo
 	for _, p := range pos {
 		if p.WorkingHeight > height {
 			break
 		}
-		return p.Mode, nil
+		revertInfo = p
 	}
 
-	return 0, errors.New("not found valid consensus algorithm")
+	return revertInfo.Mode, nil
 }
 
 func (c *arbiters) BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight uint32, mode byte) error {
