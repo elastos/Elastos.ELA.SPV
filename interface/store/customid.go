@@ -5,9 +5,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/elastos/Elastos.ELA/core/types"
-	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/common"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
+	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -34,17 +35,17 @@ type customID struct {
 	receivedCustomIDs map[string]common.Uint168
 	feeRate           common.Fixed64
 	//this spv GenesisBlockAddress
-	GenesisBlockAddress    string
+	GenesisBlockAddress string
 }
 
 func NewCustomID(db *leveldb.DB, GenesisBlockAddress string) *customID {
 	return &customID{
-		db:                db,
-		b:                 new(leveldb.Batch),
-		cache:             make(map[common.Uint256]uint32),
-		reservedCustomIDs: make(map[string]struct{}, 0),
-		receivedCustomIDs: make(map[string]common.Uint168, 0),
-		feeRate:           common.Fixed64(0),
+		db:                  db,
+		b:                   new(leveldb.Batch),
+		cache:               make(map[common.Uint256]uint32),
+		reservedCustomIDs:   make(map[string]struct{}, 0),
+		receivedCustomIDs:   make(map[string]common.Uint168, 0),
+		feeRate:             common.Fixed64(0),
 		GenesisBlockAddress: GenesisBlockAddress,
 	}
 }
@@ -160,7 +161,7 @@ func (c *customID) batchPutCustomIDProposalResults(
 				existedCustomIDs, err := c.getReservedCustomIDsFromDB()
 				if err != nil {
 					return err
-				}else{
+				} else {
 					c.reservedCustomIDs = existedCustomIDs
 				}
 			}
@@ -188,7 +189,7 @@ func (c *customID) batchPutCustomIDProposalResults(
 				existedCustomIDs, err := c.getReceivedCustomIDsFromDB()
 				if err != nil {
 					return err
-				}else{
+				} else {
 					c.receivedCustomIDs = existedCustomIDs
 				}
 			}
@@ -402,7 +403,7 @@ func (c *customID) getControversialReservedCustomIDsFromDB(proposalHash common.U
 		return nil, err
 	}
 	r := bytes.NewReader(val)
-	count, err := common.ReadVarUint(r,0)
+	count, err := common.ReadVarUint(r, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -539,7 +540,7 @@ func (c *customID) getCustomIDFeeRateFromDB() (common.Fixed64, error) {
 	val, err := c.db.Get(BKTChangeCustomIDFee, nil)
 	if err != nil {
 		if err.Error() == leveldb.ErrNotFound.Error() {
-			return 0,nil
+			return 0, nil
 		}
 		return 0, err
 	}
@@ -618,14 +619,13 @@ func (c *customID) RollbackBatch(batch *leveldb.Batch) error {
 	return nil
 }
 
-
-func (c *customID) BatchPutRetSideChainDepositCoinTx(tx *types.Transaction, batch *leveldb.Batch ) error{
+func (c *customID) BatchPutRetSideChainDepositCoinTx(tx it.Transaction, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
-	for _, output := range tx.Outputs {
+	for _, output := range tx.Outputs() {
 
 		//if this output is not OTReturnSideChainDepositCoin
-		if output.Type != types.OTReturnSideChainDepositCoin {
+		if output.Type != elacommon.OTReturnSideChainDepositCoin {
 			continue
 		}
 		outputPayload, ok := output.Payload.(*outputpayload.ReturnSideChainDeposit)
@@ -633,7 +633,7 @@ func (c *customID) BatchPutRetSideChainDepositCoinTx(tx *types.Transaction, batc
 			return errors.New("invalid ReturnSideChainDeposit output payload")
 		}
 		//if it is not this side chain
-		if outputPayload.GenesisBlockAddress !=  c.GenesisBlockAddress{
+		if outputPayload.GenesisBlockAddress != c.GenesisBlockAddress {
 			continue
 		}
 		batch.Put(toKey(BKTReturnSideChainDepositCoin, outputPayload.DepositTransactionHash.Bytes()...), []byte{1})
@@ -641,12 +641,12 @@ func (c *customID) BatchPutRetSideChainDepositCoinTx(tx *types.Transaction, batc
 	return nil
 }
 
-func (c *customID) BatchDeleteRetSideChainDepositCoinTx(tx *types.Transaction, batch *leveldb.Batch) error{
+func (c *customID) BatchDeleteRetSideChainDepositCoinTx(tx it.Transaction, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
-	for _, output := range tx.Outputs {
+	for _, output := range tx.Outputs() {
 		//if this output is not OTReturnSideChainDepositCoin
-		if output.Type != types.OTReturnSideChainDepositCoin {
+		if output.Type != elacommon.OTReturnSideChainDepositCoin {
 			continue
 		}
 		outputPayload, ok := output.Payload.(*outputpayload.ReturnSideChainDeposit)
@@ -654,7 +654,7 @@ func (c *customID) BatchDeleteRetSideChainDepositCoinTx(tx *types.Transaction, b
 			return errors.New("invalid ReturnSideChainDeposit output payload")
 		}
 		//if it is not this side chain
-		if outputPayload.GenesisBlockAddress !=  c.GenesisBlockAddress{
+		if outputPayload.GenesisBlockAddress != c.GenesisBlockAddress {
 			continue
 		}
 		batch.Delete(toKey(BKTReturnSideChainDepositCoin, outputPayload.DepositTransactionHash.Bytes()...))
@@ -662,7 +662,7 @@ func (c *customID) BatchDeleteRetSideChainDepositCoinTx(tx *types.Transaction, b
 	return nil
 }
 
-func (c *customID) HaveRetSideChainDepositCoinTx(txHash common.Uint256)bool{
+func (c *customID) HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool {
 	_, err := c.db.Get(toKey(BKTReturnSideChainDepositCoin, txHash.Bytes()...), nil)
 	if err == nil {
 		return true

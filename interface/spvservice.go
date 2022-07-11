@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"time"
@@ -16,9 +17,13 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/interface/store"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
+	"github.com/elastos/Elastos.ELA.SPV/wallet/sutil"
 
 	"github.com/elastos/Elastos.ELA/common"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
@@ -150,7 +155,7 @@ func (s *spvservice) SubmitTransactionReceipt(notifyId, txHash common.Uint256) e
 	return s.db.Que().Del(&notifyId, &txHash)
 }
 
-func (s *spvservice) VerifyTransaction(proof bloom.MerkleProof, tx types.Transaction) error {
+func (s *spvservice) VerifyTransaction(proof bloom.MerkleProof, tx it.Transaction) error {
 	// Get Header from main chain
 	header, err := s.headers.Get(&proof.BlockHash)
 	if err != nil {
@@ -187,17 +192,17 @@ func (s *spvservice) VerifyTransaction(proof bloom.MerkleProof, tx types.Transac
 	return nil
 }
 
-func (s *spvservice) SendTransaction(tx types.Transaction) error {
-	return s.IService.SendTransaction(iutil.NewTx(&tx))
+func (s *spvservice) SendTransaction(tx it.Transaction) error {
+	return s.IService.SendTransaction(iutil.NewTx(tx))
 }
 
-func (s *spvservice) GetTransaction(txId *common.Uint256) (*types.Transaction, error) {
+func (s *spvservice) GetTransaction(txId *common.Uint256) (*it.Transaction, error) {
 	utx, err := s.db.Txs().Get(txId)
 	if err != nil {
 		return nil, err
 	}
 
-	var tx types.Transaction
+	var tx it.Transaction
 	err = tx.Deserialize(bytes.NewReader(utx.RawData))
 	if err != nil {
 		return nil, err
@@ -238,7 +243,7 @@ func (s *spvservice) GetRateOfCustomIDFee() (common.Fixed64, error) {
 }
 
 //GetReturnSideChainDepositCoin query tx data by tx hash
-func (s *spvservice)HaveRetSideChainDepositCoinTx(txHash common.Uint256)bool{
+func (s *spvservice) HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool {
 	return s.db.CID().HaveRetSideChainDepositCoinTx(txHash)
 }
 
@@ -269,7 +274,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 	tx := utx.(*iutil.Tx)
 	hits := make(map[common.Uint168]struct{})
 	ops := make(map[*util.OutPoint]common.Uint168)
-	for index, output := range tx.Outputs {
+	for index, output := range tx.Outputs() {
 		if s.db.Addrs().GetFilter().ContainAddr(output.ProgramHash) {
 			outpoint := util.NewOutPoint(tx.Hash(), uint16(index))
 			ops[outpoint] = output.ProgramHash
@@ -277,7 +282,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		}
 	}
 
-	for _, input := range tx.Inputs {
+	for _, input := range tx.Inputs() {
 		op := input.Previous
 		addr := s.db.Ops().HaveOp(util.NewOutPoint(op.TxID, op.Index))
 		if addr != nil {
@@ -285,33 +290,33 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		}
 	}
 
-	switch tx.TxType {
-	case types.RevertToPOW:
-		revertToPOW := tx.Payload.(*payload.RevertToPOW)
+	switch tx.TxType() {
+	case elacommon.RevertToPOW:
+		revertToPOW := tx.Payload().(*payload.RevertToPOW)
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.Arbiters().BatchPutRevertTransaction(
 			nakedBatch, revertToPOW.WorkingHeight, byte(POW))
 		if err != nil {
 			return false, err
 		}
-	case types.RevertToDPOS:
-		revertToDPOS := tx.Payload.(*payload.RevertToDPOS)
+	case elacommon.RevertToDPOS:
+		revertToDPOS := tx.Payload().(*payload.RevertToDPOS)
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.Arbiters().BatchPutRevertTransaction(
 			nakedBatch, height+revertToDPOS.WorkHeightInterval, byte(DPOS))
 		if err != nil {
 			return false, err
 		}
-	case types.NextTurnDPOSInfo:
-		nextTurnDposInfo := tx.Payload.(*payload.NextTurnDPOSInfo)
+	case elacommon.NextTurnDPOSInfo:
+		nextTurnDposInfo := tx.Payload().(*payload.NextTurnDPOSInfo)
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight,
 			nextTurnDposInfo.CRPublicKeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
 		if err != nil {
 			return false, err
 		}
-	case types.ReturnSideChainDepositCoin:
-		_, ok := tx.Payload.(*payload.ReturnSideChainDepositCoin)
+	case elacommon.ReturnSideChainDepositCoin:
+		_, ok := tx.Payload().(*payload.ReturnSideChainDepositCoin)
 		if !ok {
 			return false, errors.New("invalid ReturnSideChainDepositCoin tx")
 		}
@@ -320,8 +325,8 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		if err != nil {
 			return false, err
 		}
-	case types.CRCProposal:
-		p, ok := tx.Payload.(*payload.CRCProposal)
+	case elacommon.CRCProposal:
+		p, ok := tx.Payload().(*payload.CRCProposal)
 		if !ok {
 			return false, errors.New("invalid crc proposal tx")
 		}
@@ -329,24 +334,24 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		switch p.ProposalType {
 		case payload.ReserveCustomID:
 			err := s.db.CID().BatchPutControversialReservedCustomIDs(
-				p.ReservedCustomIDList, p.Hash(tx.PayloadVersion), nakedBatch)
+				p.ReservedCustomIDList, p.Hash(tx.PayloadVersion()), nakedBatch)
 			if err != nil {
 				return false, err
 			}
 		case payload.ReceiveCustomID:
 			err := s.db.CID().BatchPutControversialReceivedCustomIDs(
-				p.ReceivedCustomIDList, p.ReceiverDID, p.Hash(tx.PayloadVersion), nakedBatch)
+				p.ReceivedCustomIDList, p.ReceiverDID, p.Hash(tx.PayloadVersion()), nakedBatch)
 			if err != nil {
 				return false, err
 			}
 		case payload.ChangeCustomIDFee:
 			if err := s.db.CID().BatchPutControversialChangeCustomIDFee(
-				p.RateOfCustomIDFee, p.Hash(tx.PayloadVersion), nakedBatch); err != nil {
+				p.RateOfCustomIDFee, p.Hash(tx.PayloadVersion()), nakedBatch); err != nil {
 				return false, err
 			}
 		}
-	case types.ProposalResult:
-		p, ok := tx.Payload.(*payload.RecordProposalResult)
+	case elacommon.ProposalResult:
+		p, ok := tx.Payload().(*payload.RecordProposalResult)
 		if !ok {
 			return false, errors.New("invalid custom ID result tx")
 		}
@@ -371,7 +376,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		hash, _ := common.Uint168FromAddress(listener.Address())
 		if _, ok := hits[*hash]; ok {
 			// skip transactions that not match the require type
-			if listener.Type() != tx.TxType {
+			if listener.Type() != tx.TxType() {
 				continue
 			}
 
@@ -435,12 +440,13 @@ func (s *spvservice) GetTxs(height uint32) ([]util.Transaction, error) {
 
 	txs := make([]util.Transaction, 0, len(txIDs))
 	for _, txID := range txIDs {
-		tx := newTransaction()
 		utx, err := s.db.Txs().Get(txID)
 		if err != nil {
 			return nil, err
 		}
-		err = tx.Deserialize(bytes.NewReader(utx.RawData))
+		r :=bytes.NewReader(utx.RawData)
+		var tx = newTransaction(r)
+		err = tx.Deserialize(r)
 		if err != nil {
 			return nil, err
 		}
@@ -458,8 +464,9 @@ func (s *spvservice) GetForkTxs(hash *common.Uint256) ([]util.Transaction, error
 
 	txs := make([]util.Transaction, 0, len(ftxs))
 	for _, ftx := range ftxs {
-		tx := newTransaction()
-		err = tx.Deserialize(bytes.NewReader(ftx.RawData))
+		r :=bytes.NewReader(ftx.RawData)
+		var tx = newTransaction(r)
+		err = tx.Deserialize(r)
 		if err != nil {
 			return nil, err
 		}
@@ -531,7 +538,7 @@ func (s *spvservice) BlockCommitted(block *util.Block) {
 			continue
 		}
 
-		var tx types.Transaction
+		var tx it.Transaction
 		err = tx.Deserialize(bytes.NewReader(utx.RawData))
 		if err != nil {
 			continue
@@ -586,14 +593,14 @@ func (s *spvservice) Close() error {
 }
 
 func (s *spvservice) queueMessageByListener(
-	listener TransactionListener, tx *types.Transaction, height uint32) {
+	listener TransactionListener, tx it.Transaction, height uint32) {
 	// skip unpacked transaction
 	if height == 0 {
 		return
 	}
 
 	// skip transactions that not match the require type
-	if listener.Type() != tx.TxType {
+	if listener.Type() != tx.TxType() {
 		return
 	}
 
@@ -606,7 +613,7 @@ func (s *spvservice) queueMessageByListener(
 }
 
 func (s *spvservice) notifyTransaction(notifyId common.Uint256,
-	proof bloom.MerkleProof, tx types.Transaction,
+	proof bloom.MerkleProof, tx it.Transaction,
 	confirmations uint32) (TransactionListener, bool) {
 
 	listener, ok := s.listeners[notifyId]
@@ -651,21 +658,22 @@ func getListenerKey(listener TransactionListener) common.Uint256 {
 	return sha256.Sum256(buf.Bytes())
 }
 
-func getConfirmations(tx types.Transaction) uint32 {
+func getConfirmations(tx it.Transaction) uint32 {
 	// TODO user can set confirmations attribute in transaction,
 	// if the confirmation attribute is set, use it instead of default value
-	if tx.TxType == types.CoinBase {
+	if tx.TxType() == elacommon.CoinBase {
 		return 100
 	}
 	return DefaultConfirmations
 }
 
 func newBlockHeader() util.BlockHeader {
-	return iutil.NewHeader(&types.Header{})
+	return iutil.NewHeader(&elacommon.Header{})
 }
 
-func newTransaction() util.Transaction {
-	return iutil.NewTx(&types.Transaction{})
+func newTransaction(r io.Reader) util.Transaction {
+	tx, _ := elatx.GetTransactionByBytes(r)
+	return sutil.NewTx(tx)
 }
 
 // GenesisHeader creates a specific genesis header by the given

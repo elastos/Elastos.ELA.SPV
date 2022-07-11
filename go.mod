@@ -1,6 +1,6 @@
 module github.com/elastos/Elastos.ELA.SPV
 
-go 1.13
+go 1.16
 
 require (
 	github.com/cevaris/ordered_map v0.0.0-20190319150403-3adeae072e73
