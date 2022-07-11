@@ -320,6 +320,7 @@ func findSlot(pos []uint32, height uint32, arbitersCount int) (uint32, error) {
 func calcHash(data []byte) [32]byte {
 	return sha256.Sum256(data)
 }
+
 func (c *arbiters) GetConsensusAlgorithmByHeight(height uint32) (byte, error) {
 	c.RLock()
 	defer c.RUnlock()
@@ -357,7 +358,6 @@ func (c *arbiters) BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight
 	c.Lock()
 	defer c.Unlock()
 
-	// update position
 	batch.Put(BKTRevertPosition, uint32toBytes(workingHeight))
 
 	// update positions
