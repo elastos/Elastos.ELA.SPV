@@ -23,6 +23,7 @@ import (
 	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"github.com/elastos/Elastos.ELA/core/types"
 	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	"github.com/elastos/Elastos.ELA/core/types/functions"
 	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/elanet/pact"
@@ -196,19 +197,23 @@ func (s *spvservice) SendTransaction(tx it.Transaction) error {
 	return s.IService.SendTransaction(iutil.NewTx(tx))
 }
 
-func (s *spvservice) GetTransaction(txId *common.Uint256) (*it.Transaction, error) {
+func (s *spvservice) GetTransaction(txId *common.Uint256) (it.Transaction, error) {
 	utx, err := s.db.Txs().Get(txId)
 	if err != nil {
 		return nil, err
 	}
 
-	var tx it.Transaction
-	err = tx.Deserialize(bytes.NewReader(utx.RawData))
+	r := bytes.NewReader(utx.RawData)
+	tx, err := functions.GetTransactionByBytes(r)
+	if err != nil {
+		return nil, errors.New("invalid transaction")
+	}
+	err = tx.Deserialize(r)
 	if err != nil {
 		return nil, err
 	}
 
-	return &tx, nil
+	return tx, nil
 }
 
 // Get arbiters according to height
@@ -444,7 +449,7 @@ func (s *spvservice) GetTxs(height uint32) ([]util.Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		r :=bytes.NewReader(utx.RawData)
+		r := bytes.NewReader(utx.RawData)
 		var tx = newTransaction(r)
 		err = tx.Deserialize(r)
 		if err != nil {
@@ -464,7 +469,7 @@ func (s *spvservice) GetForkTxs(hash *common.Uint256) ([]util.Transaction, error
 
 	txs := make([]util.Transaction, 0, len(ftxs))
 	for _, ftx := range ftxs {
-		r :=bytes.NewReader(ftx.RawData)
+		r := bytes.NewReader(ftx.RawData)
 		var tx = newTransaction(r)
 		err = tx.Deserialize(r)
 		if err != nil {
@@ -538,8 +543,13 @@ func (s *spvservice) BlockCommitted(block *util.Block) {
 			continue
 		}
 
-		var tx it.Transaction
-		err = tx.Deserialize(bytes.NewReader(utx.RawData))
+		r := bytes.NewReader(utx.RawData)
+		tx, err := functions.GetTransactionByBytes(r)
+		if err != nil {
+			log.Errorf("query transaction failed, txId %s", item.TxId.String())
+			continue
+		}
+		err = tx.Deserialize(r)
 		if err != nil {
 			continue
 		}
