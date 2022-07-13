@@ -67,7 +67,7 @@ type SPVService interface {
 	SendTransaction(it.Transaction) error
 
 	// GetTransaction query a transaction by it's hash.
-	GetTransaction(txId *common.Uint256) (*it.Transaction, error)
+	GetTransaction(txId *common.Uint256) (it.Transaction, error)
 
 	// GetTransactionIds query all transaction hashes on the given block height.
 	GetTransactionIds(height uint32) ([]*common.Uint256, error)
