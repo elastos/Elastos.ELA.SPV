@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/cevaris/ordered_map v0.0.0-20190319150403-3adeae072e73
-	github.com/elastos/Elastos.ELA v0.8.4-0.20220711064942-0c3d3dd44a29
+	github.com/elastos/Elastos.ELA v0.8.4-0.20220713080642-85ab5fe1855d
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/stretchr/testify v1.4.0
