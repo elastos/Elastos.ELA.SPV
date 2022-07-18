@@ -130,6 +130,7 @@ type Arbiters interface {
 	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight uint32, mode byte) error
 	GetConsensusAlgorithmByHeight(height uint32) (byte, error)
+	GetRevertInfo() []RevertInfo
 }
 
 type CustomID interface {
@@ -152,18 +153,19 @@ type CustomID interface {
 	BatchDeleteRetSideChainDepositCoinTx(tx it.Transaction, batch *leveldb.Batch) error
 
 	PutControversialChangeCustomIDFee(rate common.Fixed64,
-		proposalHash common.Uint256) error
+		proposalHash common.Uint256, workingHeight uint32) error
+
 	BatchPutControversialChangeCustomIDFee(rate common.Fixed64,
-		proposalHash common.Uint256, batch *leveldb.Batch) error
+		proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error
 	BatchDeleteControversialChangeCustomIDFee(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
-	PutCustomIDProposalResults(results []payload.ProposalResult) error
-	BatchPutCustomIDProposalResults(results []payload.ProposalResult, batch *leveldb.Batch) error
+	PutCustomIDProposalResults(results []payload.ProposalResult, height uint32) error
+	BatchPutCustomIDProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
 
-	GetReservedCustomIDs() (map[string]struct{}, error)
-	GetReceivedCustomIDs() (map[string]common.Uint168, error)
-	GetCustomIDFeeRate() (common.Fixed64, error)
+	GetReservedCustomIDs(height uint32, info []RevertInfo) (map[string]struct{}, error)
+	GetReceivedCustomIDs(height uint32, info []RevertInfo) (map[string]common.Uint168, error)
+	GetCustomIDFeeRate(height uint32) (common.Fixed64, error)
 	//Is this RetSideChainDepositCoin tx exist
 	HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool
 }

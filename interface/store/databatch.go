@@ -170,26 +170,8 @@ func (b *dataBatch) DeleteCustomID(tx it.Transaction) error {
 				}
 
 			case payload.ChangeCustomIDFee:
-				// initialize cache.
-				if b.customID.feeRate == 0 {
-					feeRate, _ := b.customID.getCustomIDFeeRateFromDB()
-					// todo consider other errors
-					if feeRate == 0 {
-						feeRate = DefaultFeeRate
-					}
-					b.customID.feeRate = feeRate
-					continue
-				}
-
-				if r.Result == true {
-					// update db.
-					lastRate, err := b.customID.gutLastCustomIDFee(r.ProposalHash)
-					if err != nil {
-						return err
-					}
-
-					b.customID.feeRate = lastRate
-				}
+				// reorganize: no need to change data of database, because
+				// the data of workingHeight will be rewrite later.
 			}
 		}
 	}
