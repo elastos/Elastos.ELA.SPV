@@ -561,7 +561,11 @@ func (s *spvservice) BlockCommitted(block *util.Block) {
 		}
 
 		// Notify listeners
-		listener, ok := s.notifyTransaction(item.NotifyId, proof, tx, block.Height-item.Height)
+		var confirmCount uint32
+		if block.Height > item.Height {
+			confirmCount = block.Height - item.Height
+		}
+		listener, ok := s.notifyTransaction(item.NotifyId, proof, tx, confirmCount)
 		if ok {
 			item.LastNotify = time.Now()
 			s.db.Que().Put(item)
