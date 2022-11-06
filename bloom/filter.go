@@ -2,6 +2,7 @@ package bloom
 
 import (
 	"bytes"
+	common2 "github.com/elastos/Elastos.ELA/core/types/common"
 	"math"
 	"sync"
 
@@ -48,7 +49,7 @@ type Filter struct {
 //
 // For more information on what values to use for both elements and fprate,
 // see https://en.wikipedia.org/wiki/Bloom_filter.
-func NewFilter(elements, tweak uint32, fprate float64) *Filter {
+func NewFilter(elements, tweak uint32, fprate float64, txTypes []uint8) *Filter {
 	// Massage the false positive rate to sane values.
 	if fprate > 1.0 {
 		fprate = 1.0
@@ -73,10 +74,15 @@ func NewFilter(elements, tweak uint32, fprate float64) *Filter {
 	hashFuncs := uint32(float64(dataLen*8) / float64(elements) * math.Ln2)
 	hashFuncs = minUint32(hashFuncs, MaxFilterLoadHashFuncs)
 
+	tps := make([]common2.TxType, 0)
+	for _, t := range txTypes {
+		tps = append(tps, common2.TxType(t))
+	}
 	msg := &msg.FilterLoad{
 		Filter:    make([]byte, dataLen),
 		HashFuncs: hashFuncs,
 		Tweak:     tweak,
+		TxTypes:   tps,
 	}
 	return &Filter{msg: msg}
 }
@@ -248,5 +254,6 @@ func (bf *Filter) GetFilterLoadMsg() *msg.FilterLoad {
 func (bf *Filter) ToTxFilterMsg(typ uint8) *msg.TxFilterLoad {
 	buf := new(bytes.Buffer)
 	bf.msg.Serialize(buf)
+	// todo add txtypes
 	return &msg.TxFilterLoad{Type: typ, Data: buf.Bytes()}
 }

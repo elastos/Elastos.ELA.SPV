@@ -113,10 +113,10 @@ func newService(cfg *Config) (*service, error) {
 	params := cfg.ChainParams
 	svrCfg := server.NewDefaultConfig(
 		params.Magic, pact.DPOSStartVersion, 0,
-		params.DefaultPort, params.DNSSeeds, nil,
+		params.NodePort, params.DNSSeeds, nil,
 		service.newPeer, service.donePeer, service.createMessage,
 		func() uint64 { return uint64(chain.BestHeight()) },
-		params.NewP2PProtocolVersionHeight, cfg.NodeVersion,
+		params.CRConfiguration.NewP2PProtocolVersionHeight, cfg.NodeVersion,
 	)
 	svrCfg.DataDir = dataDir
 	svrCfg.MaxPeers = defaultMaxPeers

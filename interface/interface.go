@@ -16,7 +16,7 @@ type Config struct {
 	DataDir string
 
 	// The chain parameters within network settings.
-	ChainParams *config.Params
+	ChainParams *config.Configuration
 
 	// PermanentPeers are the peers need to be connected permanently.
 	PermanentPeers []string

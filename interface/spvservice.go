@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/elastos/Elastos.ELA/core"
 	"io"
 	"math"
 	"os"
@@ -77,7 +78,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 	}
 
 	var originArbiters [][]byte
-	for _, a := range cfg.ChainParams.CRCArbiters {
+	for _, a := range cfg.ChainParams.DPoSConfiguration.CRCArbiters {
 		v, err := hex.DecodeString(a)
 		if err != nil {
 			return nil, err
@@ -85,7 +86,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		originArbiters = append(originArbiters, v)
 	}
 	dataStore, err := store.NewDataStore(dataDir, originArbiters,
-		len(cfg.ChainParams.CRCArbiters)*3, cfg.GenesisBlockAddress)
+		len(cfg.ChainParams.DPoSConfiguration.CRCArbiters)*3, cfg.GenesisBlockAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +97,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 		rollback:                    cfg.OnRollback,
 		listeners:                   make(map[common.Uint256]TransactionListener),
 		filterType:                  cfg.FilterType,
-		NewP2PProtocolVersionHeight: cfg.ChainParams.NewP2PProtocolVersionHeight,
+		NewP2PProtocolVersionHeight: cfg.ChainParams.CRConfiguration.NewP2PProtocolVersionHeight,
 	}
 
 	chainStore := database.NewChainDB(headerStore, service)
@@ -109,7 +110,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 			uint64(pact.SFNodeNetwork),
 			uint64(pact.SFNodeBloom),
 		},
-		GenesisHeader:  GenesisHeader(cfg.ChainParams.GenesisBlock),
+		GenesisHeader:  GenesisHeader(core.GenesisBlock(cfg.ChainParams.FoundationAddress)),
 		ChainStore:     chainStore,
 		NewTransaction: newTransaction,
 		NewBlockHeader: newBlockHeader,
@@ -127,17 +128,24 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 }
 
 func (s *spvservice) RegisterTransactionListener(listener TransactionListener) error {
-	address, err := common.Uint168FromAddress(listener.Address())
-	if err != nil {
-		return fmt.Errorf("address %s is not a valied address", listener.Address())
-	}
 	key := getListenerKey(listener)
 	if _, ok := s.listeners[key]; ok {
 		return fmt.Errorf("listener with address: %s type: %s flags: %d already registered",
 			listener.Address(), listener.Type().Name(), listener.Flags())
 	}
 	s.listeners[key] = listener
-	return s.db.Addrs().Put(address)
+
+	if len(listener.Address()) != 0 {
+		address, err := common.Uint168FromAddress(listener.Address())
+		if err != nil {
+			return fmt.Errorf("address %s is not a valied address", listener.Address())
+		}
+
+		return s.db.Addrs().Put(address)
+	}
+
+	// only listener without address need to put into TxTypes db
+	return s.db.TxTypes().Put(uint8(listener.Type()))
 }
 
 func (s *spvservice) RegisterRevertListener(listener RevertListener) error {
@@ -264,7 +272,8 @@ func (s *spvservice) HeaderStore() store.HeaderStore {
 
 func (s *spvservice) GetFilter() *msg.TxFilterLoad {
 	addrs := s.db.Addrs().GetAll()
-	f := bloom.NewFilter(uint32(len(addrs)), math.MaxUint32, 0)
+	txTypes := s.db.TxTypes().GetAll()
+	f := bloom.NewFilter(uint32(len(addrs)), math.MaxUint32, 0, txTypes)
 	for _, address := range addrs {
 		f.Add(address.Bytes())
 	}
@@ -275,24 +284,6 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 	height uint32) (bool, error) {
 
 	tx := utx.(*iutil.Tx)
-	hits := make(map[common.Uint168]struct{})
-	ops := make(map[*util.OutPoint]common.Uint168)
-	for index, output := range tx.Outputs() {
-		if s.db.Addrs().GetFilter().ContainAddr(output.ProgramHash) {
-			outpoint := util.NewOutPoint(tx.Hash(), uint16(index))
-			ops[outpoint] = output.ProgramHash
-			hits[output.ProgramHash] = struct{}{}
-		}
-	}
-
-	for _, input := range tx.Inputs() {
-		op := input.Previous
-		addr := s.db.Ops().HaveOp(util.NewOutPoint(op.TxID, op.Index))
-		if addr != nil {
-			hits[*addr] = struct{}{}
-		}
-	}
-
 	switch tx.TxType() {
 	case elacommon.RevertToPOW:
 		revertToPOW := tx.Payload().(*payload.RevertToPOW)
@@ -365,7 +356,33 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		}
 	}
 
-	if len(hits) == 0 {
+	hits := make(map[common.Uint168]struct{})
+	ops := make(map[*util.OutPoint]common.Uint168)
+	for index, output := range tx.Outputs() {
+		if s.db.Addrs().GetFilter().ContainAddr(output.ProgramHash) {
+			outpoint := util.NewOutPoint(tx.Hash(), uint16(index))
+			ops[outpoint] = output.ProgramHash
+			hits[output.ProgramHash] = struct{}{}
+		}
+	}
+
+	for _, input := range tx.Inputs() {
+		op := input.Previous
+		addr := s.db.Ops().HaveOp(util.NewOutPoint(op.TxID, op.Index))
+		if addr != nil {
+			hits[*addr] = struct{}{}
+		}
+	}
+
+	var txTypesHit, addrsHit bool
+	tpsFilter := s.db.TxTypes().GetFilter()
+	if tpsFilter.IsLoaded() && tpsFilter.ContainTxType(uint8(tx.TxType())) {
+		txTypesHit = true
+	}
+	if len(hits) != 0 {
+		addrsHit = true
+	}
+	if !txTypesHit && !addrsHit {
 		return true, nil
 	}
 
@@ -376,20 +393,24 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 	}
 
 	for _, listener := range s.listeners {
-		hash, _ := common.Uint168FromAddress(listener.Address())
-		if _, ok := hits[*hash]; ok {
-			// skip transactions that not match the require type
-			if listener.Type() != tx.TxType() {
+		// skip transactions that not match the require type
+		if listener.Type() != tx.TxType() {
+			continue
+		}
+		address := listener.Address()
+		if len(address) != 0 {
+			hash, _ := common.Uint168FromAddress(address)
+			if _, ok := hits[*hash]; !ok {
 				continue
 			}
-
-			// queue message
-			batch.Que().Put(&store.QueItem{
-				NotifyId: getListenerKey(listener),
-				TxId:     tx.Hash(),
-				Height:   height,
-			})
 		}
+		// queue message
+		batch.Que().Put(&store.QueItem{
+			NotifyId: getListenerKey(listener),
+			TxId:     tx.Hash(),
+			Height:   height,
+		})
+
 	}
 
 	return false, batch.Txs().Put(util.NewTx(utx, height))
@@ -604,26 +625,6 @@ func (s *spvservice) Close() error {
 	return s.db.Close()
 }
 
-func (s *spvservice) queueMessageByListener(
-	listener TransactionListener, tx it.Transaction, height uint32) {
-	// skip unpacked transaction
-	if height == 0 {
-		return
-	}
-
-	// skip transactions that not match the require type
-	if listener.Type() != tx.TxType() {
-		return
-	}
-
-	// queue message
-	s.db.Que().Put(&store.QueItem{
-		NotifyId: getListenerKey(listener),
-		TxId:     tx.Hash(),
-		Height:   height,
-	})
-}
-
 func (s *spvservice) notifyTransaction(notifyId common.Uint256,
 	proof bloom.MerkleProof, tx it.Transaction,
 	confirmations uint32) (TransactionListener, bool) {
@@ -665,8 +666,12 @@ func (s *spvservice) notifyTransaction(notifyId common.Uint256,
 
 func getListenerKey(listener TransactionListener) common.Uint256 {
 	buf := new(bytes.Buffer)
-	addr, _ := common.Uint168FromAddress(listener.Address())
-	common.WriteElements(buf, addr[:], listener.Type(), listener.Flags())
+	if len(listener.Address()) == 0 {
+		common.WriteElements(buf, listener.Type(), listener.Flags())
+	} else {
+		addr, _ := common.Uint168FromAddress(listener.Address())
+		common.WriteElements(buf, addr[:], listener.Type(), listener.Flags())
+	}
 	return sha256.Sum256(buf.Bytes())
 }
 

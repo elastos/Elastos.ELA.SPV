@@ -11,6 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/wallet/store/headers"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/store/sqlite"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/sutil"
+	"github.com/elastos/Elastos.ELA/core"
 	"io"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -157,7 +158,7 @@ func (w *spvwallet) GetForkTxs(hash *common.Uint256) ([]util.Transaction, error)
 
 	txs := make([]util.Transaction, 0, len(ftxs))
 	for _, ftx := range ftxs {
-		r:=bytes.NewReader(ftx.RawData)
+		r := bytes.NewReader(ftx.RawData)
 		tx := newTransaction(r)
 		if err := tx.Deserialize(r); err != nil {
 			return nil, err
@@ -208,7 +209,7 @@ func (w *spvwallet) GetFilter() *msg.TxFilterLoad {
 
 	elements := uint32(len(addrs) + len(outpoints))
 
-	f := bloom.NewFilter(elements, 0, 0)
+	f := bloom.NewFilter(elements, 0, 0, nil)
 	for _, addr := range addrs {
 		f.Add(addr.Bytes())
 	}
@@ -311,7 +312,7 @@ func (w *spvwallet) sendTransaction(params http.Params) (interface{}, error) {
 		return nil, ErrInvalidParameter
 	}
 
-	r :=bytes.NewReader(txBytes)
+	r := bytes.NewReader(txBytes)
 	var tx = newTransaction(r)
 	err = tx.Deserialize(r)
 	if err != nil {
@@ -336,7 +337,7 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 	w := spvwallet{db: db}
 	chainStore := database.NewChainDB(headers, &w)
 
-	var params *config.Params
+	var params *config.Configuration
 	switch cfg.Network {
 	case "testnet", "test", "t":
 		params = config.DefaultParams.TestNet()
@@ -350,7 +351,7 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 	w.IService, err = sdk.NewService(&sdk.Config{
 		ChainParams:    params,
 		PermanentPeers: cfg.PermanentPeers,
-		GenesisHeader:  sutil.NewHeader(&params.GenesisBlock.Header),
+		GenesisHeader:  sutil.NewHeader(&core.GenesisBlock(params.FoundationAddress).Header),
 		ChainStore:     chainStore,
 		NewTransaction: newTransaction,
 		NewBlockHeader: sutil.NewEmptyHeader,

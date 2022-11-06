@@ -7,7 +7,9 @@ require (
 	github.com/elastos/Elastos.ELA v0.8.4-0.20220926040747-3c4d3be13d88
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
-	github.com/stretchr/testify v1.6.0
+	github.com/stretchr/testify v1.7.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli v1.22.5
 )
+
+replace github.com/elastos/Elastos.ELA => /Users/jiangzehua/work/elastos/src/github.com/elastos/Elastos.ELA
