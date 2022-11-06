@@ -4,6 +4,9 @@ var (
 	// addresses
 	BKTAddrs = []byte("addrs")
 
+	// transaction types
+	BKTTxTypes = []byte("txtypes")
+
 	// headers
 	BKTHeaders  = []byte("headers")
 	BKTIndexes  = []byte("indexes")

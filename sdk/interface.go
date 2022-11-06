@@ -61,7 +61,7 @@ type Config struct {
 	DataDir string
 
 	// ChainParams indicates the network parameters for the SPV service.
-	ChainParams *config.Params
+	ChainParams *config.Configuration
 
 	// PermanentPeers are the peers need to be connected permanently.
 	PermanentPeers []string

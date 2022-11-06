@@ -21,6 +21,7 @@ type HeaderStore interface {
 type DataStore interface {
 	database.DB
 	Addrs() Addrs
+	TxTypes() TxTypes
 	Txs() Txs
 	Ops() Ops
 	Que() Que
@@ -50,6 +51,13 @@ type Addrs interface {
 	GetFilter() *sdk.AddrFilter
 	Put(addr *common.Uint168) error
 	GetAll() []*common.Uint168
+}
+
+type TxTypes interface {
+	database.DB
+	GetFilter() *sdk.TxTypesFilter
+	Put(txType uint8) error
+	GetAll() []uint8
 }
 
 type Txs interface {
