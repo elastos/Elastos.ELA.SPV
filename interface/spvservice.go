@@ -110,7 +110,7 @@ func NewSPVService(cfg *Config) (*spvservice, error) {
 			uint64(pact.SFNodeNetwork),
 			uint64(pact.SFNodeBloom),
 		},
-		GenesisHeader:  GenesisHeader(core.GenesisBlock(cfg.ChainParams.FoundationAddress)),
+		GenesisHeader:  GenesisHeader(core.GenesisBlock(*cfg.ChainParams.FoundationProgramHash)),
 		ChainStore:     chainStore,
 		NewTransaction: newTransaction,
 		NewBlockHeader: newBlockHeader,
