@@ -351,7 +351,7 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 	w.IService, err = sdk.NewService(&sdk.Config{
 		ChainParams:    params,
 		PermanentPeers: cfg.PermanentPeers,
-		GenesisHeader:  sutil.NewHeader(&core.GenesisBlock(params.FoundationAddress).Header),
+		GenesisHeader:  sutil.NewHeader(&core.GenesisBlock(*params.FoundationProgramHash).Header),
 		ChainStore:     chainStore,
 		NewTransaction: newTransaction,
 		NewBlockHeader: sutil.NewEmptyHeader,
