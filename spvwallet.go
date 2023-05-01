@@ -11,11 +11,14 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/wallet/store/headers"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/store/sqlite"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/sutil"
+	"github.com/elastos/Elastos.ELA/core"
+	"io"
 
-	"github.com/elastos/Elastos.ELA/elanet/filter"
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/common/config"
-	"github.com/elastos/Elastos.ELA/core/types"
+	tx "github.com/elastos/Elastos.ELA/core/transaction"
+	types "github.com/elastos/Elastos.ELA/core/types/common"
+	"github.com/elastos/Elastos.ELA/elanet/filter"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
 	"github.com/elastos/Elastos.ELA/utils/http"
 	"github.com/elastos/Elastos.ELA/utils/http/jsonrpc"
@@ -41,7 +44,7 @@ func (w *spvwallet) putTx(batch sqlite.DataBatch, utx util.Transaction,
 	hits := 0
 
 	// Check if any UTXOs within this wallet have been spent.
-	for _, input := range tx.Inputs {
+	for _, input := range tx.Inputs() {
 		// Move UTXO to STXO
 		op := util.NewOutPoint(input.Previous.TxID, input.Previous.Index)
 		utxo, _ := w.db.UTXOs().Get(op)
@@ -58,11 +61,11 @@ func (w *spvwallet) putTx(batch sqlite.DataBatch, utx util.Transaction,
 	}
 
 	// Check if there are any output to this wallet address.
-	for index, output := range tx.Outputs {
+	for index, output := range tx.Outputs() {
 		// Filter address
 		if w.getAddrFilter().ContainAddr(output.ProgramHash) {
 			var lockTime = output.OutputLock
-			if tx.TxType == types.CoinBase {
+			if tx.TxType() == types.CoinBase {
 				lockTime = height + 100
 			}
 			utxo := sutil.NewUTXO(txId, height, index, output.Value, lockTime, output.ProgramHash)
@@ -136,8 +139,9 @@ func (w *spvwallet) GetTxs(height uint32) ([]util.Transaction, error) {
 
 	utxs := make([]util.Transaction, 0, len(txs))
 	for _, tx := range txs {
-		wtx := newTransaction()
-		if err := wtx.Deserialize(bytes.NewReader(tx.RawData)); err != nil {
+		r := bytes.NewReader(tx.RawData)
+		wtx := newTransaction(r)
+		if err := wtx.Deserialize(r); err != nil {
 			return nil, err
 		}
 		utxs = append(utxs, wtx)
@@ -154,8 +158,9 @@ func (w *spvwallet) GetForkTxs(hash *common.Uint256) ([]util.Transaction, error)
 
 	txs := make([]util.Transaction, 0, len(ftxs))
 	for _, ftx := range ftxs {
-		tx := newTransaction()
-		if err := tx.Deserialize(bytes.NewReader(ftx.RawData)); err != nil {
+		r := bytes.NewReader(ftx.RawData)
+		tx := newTransaction(r)
+		if err := tx.Deserialize(r); err != nil {
 			return nil, err
 		}
 		txs = append(txs, tx)
@@ -204,7 +209,7 @@ func (w *spvwallet) GetFilter() *msg.TxFilterLoad {
 
 	elements := uint32(len(addrs) + len(outpoints))
 
-	f := bloom.NewFilter(elements, 0, 0)
+	f := bloom.NewFilter(elements, 0, 0, nil)
 	for _, addr := range addrs {
 		f.Add(addr.Bytes())
 	}
@@ -307,8 +312,9 @@ func (w *spvwallet) sendTransaction(params http.Params) (interface{}, error) {
 		return nil, ErrInvalidParameter
 	}
 
-	var tx = newTransaction()
-	err = tx.Deserialize(bytes.NewReader(txBytes))
+	r := bytes.NewReader(txBytes)
+	var tx = newTransaction(r)
+	err = tx.Deserialize(r)
 	if err != nil {
 		return nil, fmt.Errorf("deserialize transaction failed %s", err)
 	}
@@ -331,7 +337,7 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 	w := spvwallet{db: db}
 	chainStore := database.NewChainDB(headers, &w)
 
-	var params *config.Params
+	var params *config.Configuration
 	switch cfg.Network {
 	case "testnet", "test", "t":
 		params = config.DefaultParams.TestNet()
@@ -345,7 +351,7 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 	w.IService, err = sdk.NewService(&sdk.Config{
 		ChainParams:    params,
 		PermanentPeers: cfg.PermanentPeers,
-		GenesisHeader:  sutil.NewHeader(&params.GenesisBlock.Header),
+		GenesisHeader:  sutil.NewHeader(&core.GenesisBlock(*params.FoundationProgramHash).Header),
 		ChainStore:     chainStore,
 		NewTransaction: newTransaction,
 		NewBlockHeader: sutil.NewEmptyHeader,
@@ -367,6 +373,7 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 	return &w, nil
 }
 
-func newTransaction() util.Transaction {
-	return sutil.NewTx(&types.Transaction{})
+func newTransaction(r io.Reader) util.Transaction {
+	tx, _ := tx.GetTransactionByBytes(r)
+	return sutil.NewTx(tx)
 }

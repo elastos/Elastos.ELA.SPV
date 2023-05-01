@@ -4,6 +4,9 @@ var (
 	// addresses
 	BKTAddrs = []byte("addrs")
 
+	// transaction types
+	BKTTxTypes = []byte("txtypes")
+
 	// headers
 	BKTHeaders  = []byte("headers")
 	BKTIndexes  = []byte("indexes")
@@ -31,9 +34,12 @@ var (
 	// revert to pow
 	BKTRevertPosition  = []byte("revertp")
 	BKTRevertPositions = []byte("revertps")
-	BKTConsensus       = []byte("consensus")
 
 	//ReturnSideChainDepositCoin
-	BKTReturnSideChainDepositCoin       = []byte("retschdepositcoin")
+	BKTReturnSideChainDepositCoin = []byte("retschdepositcoin")
 
+	BKTReservedCustomID     = []byte("rscid")
+	BKTReceivedCustomID     = []byte("rccid")
+	BKTChangeCustomIDFee    = []byte("ccidf")
+	BKTCustomIDFeePositions = []byte("cidfps")
 )

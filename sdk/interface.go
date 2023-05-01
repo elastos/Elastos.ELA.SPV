@@ -5,6 +5,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/util"
 	"github.com/elastos/Elastos.ELA/common/config"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
+	"io"
 )
 
 /*
@@ -60,7 +61,7 @@ type Config struct {
 	DataDir string
 
 	// ChainParams indicates the network parameters for the SPV service.
-	ChainParams *config.Params
+	ChainParams *config.Configuration
 
 	// PermanentPeers are the peers need to be connected permanently.
 	PermanentPeers []string
@@ -75,7 +76,7 @@ type Config struct {
 	ChainStore database.ChainStore
 
 	// NewTransaction create a new transaction instance.
-	NewTransaction func() util.Transaction
+	NewTransaction func(r io.Reader) util.Transaction
 
 	// NewBlockHeader create a new block header instance.
 	NewBlockHeader func() util.BlockHeader
