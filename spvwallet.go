@@ -12,6 +12,8 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/wallet/store/sqlite"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/sutil"
 	"github.com/elastos/Elastos.ELA/core"
+	transaction2 "github.com/elastos/Elastos.ELA/core/transaction"
+	"github.com/elastos/Elastos.ELA/core/types/functions"
 	"io"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -323,6 +325,7 @@ func (w *spvwallet) sendTransaction(params http.Params) (interface{}, error) {
 }
 
 func NewWallet(dataDir string) (*spvwallet, error) {
+	initFunctions()
 	// Initialize headers db
 	headers, err := headers.NewDatabase(dataDir)
 	if err != nil {
@@ -376,4 +379,11 @@ func NewWallet(dataDir string) (*spvwallet, error) {
 func newTransaction(r io.Reader) util.Transaction {
 	tx, _ := tx.GetTransactionByBytes(r)
 	return sutil.NewTx(tx)
+}
+
+func initFunctions() {
+	functions.GetTransactionByTxType = transaction2.GetTransaction
+	functions.GetTransactionByBytes = transaction2.GetTransactionByBytes
+	functions.CreateTransaction = transaction2.CreateTransaction
+	functions.GetTransactionParameters = transaction2.GetTransactionparameters
 }
