@@ -154,9 +154,11 @@ func (sm *SyncManager) startSync() {
 	}
 
 	bestHeight := sm.cfg.Chain.BestHeight()
+	log.Infof("peerStates size: %d, best height: %d", len(sm.peerStates), bestHeight)
 	var bestPeer *peer.Peer
 	for peer, state := range sm.peerStates {
 		if !state.syncCandidate {
+			log.Warnf("peer is not synccandidate %s", peer)
 			continue
 		}
 
@@ -167,6 +169,7 @@ func (sm *SyncManager) startSync() {
 		// have one soon so it is a reasonable choice.  It also allows
 		// the case where both are at 0 such as during regression test.
 		if peer.Height() < bestHeight {
+			log.Warnf("peer is not synccandidate less than bestheight %s", peer)
 			state.syncCandidate = false
 			continue
 		}
@@ -241,8 +244,6 @@ func (sm *SyncManager) handleNewPeerMsg(peer *peer.Peer) {
 		return
 	}
 
-	log.Infof("New valid peer %s", peer)
-
 	// Initialize the peer state
 	isSyncCandidate := sm.isSyncCandidate(peer)
 	sm.peerStates[peer] = &peerSyncState{
@@ -251,6 +252,7 @@ func (sm *SyncManager) handleNewPeerMsg(peer *peer.Peer) {
 		requestedBlocks: make(map[common.Uint256]struct{}),
 		fpRate:          fprate.NewFpRate(),
 	}
+	log.Infof("New peer (synccandidate=%v,peerStates size=%d) %s", isSyncCandidate, len(sm.peerStates), peer)
 
 	if isSyncCandidate {
 		// Update bloom filter for the candidate peer.
@@ -313,7 +315,7 @@ func (sm *SyncManager) handleTxMsg(tmsg *txMsg) {
 	_, ok := state.requestedTxns[txHash]
 	if !ok {
 		log.Warnf("Peer %s is sending us transactions we didn't request", peer)
-		peer.Disconnect()
+		//peer.Disconnect()
 		return
 	}
 	sm.txMemPool[txHash] = struct{}{}
@@ -416,7 +418,9 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 		state.fpRate.Reset()
 	}
 
-	log.Infof("Received block %s at height %d", blockHash.String(), newHeight)
+	if newHeight%1000 == 0 {
+		log.Infof("recv b #%d from %s", newHeight, peer)
+	}
 
 	// Check reorg
 	if reorg && sm.current() {
