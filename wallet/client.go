@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -9,8 +8,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/wallet/client/account"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/client/transaction"
 	"github.com/elastos/Elastos.ELA.SPV/wallet/client/wallet"
-	"github.com/elastos/Elastos.ELA/common/config"
-
+	"github.com/elastos/Elastos.ELA/core"
 	"github.com/urfave/cli"
 )
 
@@ -19,7 +17,7 @@ var Version string
 func main() {
 	url := fmt.Sprint("http://127.0.0.1:", cfg.RPCPort, "/spvwallet")
 
-	client.Setup(dataDir, url, config.ELAAssetID)
+	client.Setup(dataDir, url, core.ELAAssetID)
 
 	app := cli.NewApp()
 	app.Name = "ELASTOS SPV WALLET"
