@@ -418,9 +418,7 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 		state.fpRate.Reset()
 	}
 
-	if newHeight%1000 == 0 {
-		log.Infof("recv b #%d from %s", newHeight, peer)
-	}
+	log.Infof("Received block %s at height %d", blockHash.String(), newHeight)
 
 	// Check reorg
 	if reorg && sm.current() {
