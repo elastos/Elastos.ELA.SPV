@@ -25,11 +25,12 @@ var (
 	BKTForkTxs   = []byte("forktxs")
 
 	// arbiters
-	BKTArbiters          = []byte("arbiters")
-	BKTArbPosition       = []byte("arbptn")
-	BKTArbPositions      = []byte("arbpts")
-	BKTArbitersData      = []byte("arbdata")
-	BKTTransactionHeight = []byte("txheight")
+	BKTArbiters             = []byte("arbiters")
+	BKTArbPosition          = []byte("arbptn")
+	BKTArbPositions         = []byte("arbpts")
+	BKTArbitersData         = []byte("arbdata")
+	BKTTransactionHeight    = []byte("txheight")
+	BKTCompleteArbitersData = []byte("arbcomdata")
 
 	// revert to pow
 	BKTRevertPosition  = []byte("revertp")

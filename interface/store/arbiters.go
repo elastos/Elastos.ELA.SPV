@@ -32,30 +32,36 @@ type arbiters struct {
 	cache          map[common.Uint256]uint32
 	originArbiters [][]byte
 	arbitersCount  int
+
+	crcArbitersCache [][]byte
+	crcCache         map[common.Uint256]uint32
 }
 
 func NewArbiters(db *leveldb.DB, originArbiters [][]byte, arbitersCount int) *arbiters {
 	return &arbiters{
-		db:             db,
-		b:              new(leveldb.Batch),
-		posCache:       make([]uint32, 0),
-		cache:          make(map[common.Uint256]uint32),
-		originArbiters: originArbiters,
-		arbitersCount:  arbitersCount,
+		db:               db,
+		b:                new(leveldb.Batch),
+		posCache:         make([]uint32, 0),
+		cache:            make(map[common.Uint256]uint32),
+		originArbiters:   originArbiters,
+		arbitersCount:    arbitersCount,
+		crcArbitersCache: make([][]byte, 0),
+		crcCache:         make(map[common.Uint256]uint32),
 	}
 }
 
-func (c *arbiters) Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte) error {
+func (c *arbiters) Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, completeCRCArbiters [][]byte) error {
 	c.Lock()
 	defer c.Unlock()
-	if err := c.batchPut(height, crcArbiters, normalArbiters, c.b); err != nil {
+	if err := c.batchPut(height, crcArbiters, normalArbiters, completeCRCArbiters, c.b); err != nil {
 		return err
 	}
 	c.db.Write(c.b, nil)
 	return nil
 }
 
-func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error {
+func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte,
+	normalArbiters [][]byte, completeCRCArbiters [][]byte, batch *leveldb.Batch) error {
 	batch.Put(BKTArbPosition, uint32toBytes(height))
 
 	// update positions
@@ -76,38 +82,69 @@ func (c *arbiters) batchPut(height uint32, crcArbiters [][]byte, normalArbiters 
 	if err != nil {
 		return err
 	}
-	val, ok := c.cache[*key]
+
 	index := getIndex(height)
+	val, ok := c.cache[*key]
 	if !ok {
 		existHeight, err := c.db.Get(toKey(BKTTransactionHeight, hash[:]...), nil)
 		if err == nil {
 			c.cache[*key] = bytesToUint32(existHeight)
 			batch.Put(toKey(BKTArbitersData, index...), existHeight)
-			return nil
 		} else if err == leveldb.ErrNotFound {
 			c.cache[*key] = height
 			batch.Put(toKey(BKTArbitersData, index...), data)
 			batch.Put(toKey(BKTTransactionHeight, hash[:]...), uint32toBytes(height))
-			return nil
 		} else {
 			return err
 		}
+	} else {
+		batch.Put(toKey(BKTArbitersData, index...), uint32toBytes(val))
 	}
 
-	batch.Put(toKey(BKTArbitersData, index...), uint32toBytes(val))
+	// record complete crc arbiters.
+	if completeCRCArbiters == nil {
+		completeCRCArbiters = normalArbiters
+	}
+	crcData := getCRCArbitersValueBytes(completeCRCArbiters)
+	crcHash := calcHash(crcData)
+	crcKey, err := common.Uint256FromBytes(crcHash[:])
+	if err != nil {
+		return err
+	}
+	cval, ok := c.crcCache[*crcKey]
+	if !ok {
+		existHeight, err := c.db.Get(toKey(BKTTransactionHeight, crcHash[:]...), nil)
+		if err == nil {
+			c.crcCache[*crcKey] = bytesToUint32(existHeight)
+			batch.Put(toKey(BKTCompleteArbitersData, index...), existHeight)
+		} else if err == leveldb.ErrNotFound {
+			c.crcCache[*crcKey] = height
+			batch.Put(toKey(BKTCompleteArbitersData, index...), crcData)
+			batch.Put(toKey(BKTTransactionHeight, crcHash[:]...), uint32toBytes(height))
+		} else {
+			return err
+		}
+	} else {
+		batch.Put(toKey(BKTCompleteArbitersData, index...), uint32toBytes(cval))
+	}
+
 	return nil
 }
 
-func (c *arbiters) BatchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error {
+func (c *arbiters) BatchPut(height uint32, crcArbiters [][]byte,
+	normalArbiters [][]byte, completeCRCArbiters [][]byte, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
-	return c.batchPut(height, crcArbiters, normalArbiters, batch)
+	return c.batchPut(height, crcArbiters, normalArbiters, completeCRCArbiters, batch)
 }
 
 func (c *arbiters) Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
-	c.RLock()
-	defer c.RUnlock()
 	return c.GetByHeight(c.getCurrentPosition())
+}
+
+// get all crc arbiters and normal arbiters ignore the status
+func (c *arbiters) GetCompleteCRCArbiters() (crcArbiters [][]byte, err error) {
+	return c.GetCompleteCRCArbitersByHeight(c.getCurrentPosition())
 }
 
 func (c *arbiters) GetNext() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error) {
@@ -115,6 +152,14 @@ func (c *arbiters) GetNext() (workingHeight uint32, crcArbiters [][]byte, normal
 	defer c.RUnlock()
 	workingHeight = c.getCurrentPosition()
 	crcArbiters, normalArbiters, err = c.get(workingHeight)
+	return
+}
+
+func (c *arbiters) GetNextCompleteCRCArbiters() (workingHeight uint32, crcArbiters [][]byte, err error) {
+	c.RLock()
+	defer c.RUnlock()
+	workingHeight = c.getCurrentPosition()
+	crcArbiters, err = c.getCompleteCRCArbiters(workingHeight)
 	return
 }
 
@@ -156,6 +201,33 @@ func (c *arbiters) get(height uint32) (crcArbiters [][]byte, normalArbiters [][]
 	return
 }
 
+func (c *arbiters) getCompleteCRCArbiters(height uint32) (crcArbiters [][]byte, err error) {
+	var val []byte
+	val, err = c.db.Get(toKey(BKTCompleteArbitersData, getIndex(height)...), nil)
+	if err != nil {
+		return
+	}
+	if len(val) == 4 {
+		val, err = c.db.Get(toKey(BKTCompleteArbitersData, getIndex(bytesToUint32(val))...), nil)
+		if err != nil {
+			return
+		}
+	}
+	r := bytes.NewReader(val)
+	crcCount, err := common.ReadUint8(r)
+	if err != nil {
+		return
+	}
+	for i := uint8(0); i < crcCount; i++ {
+		cr, err := common.ReadVarBytes(r, 33, "public key")
+		if err != nil {
+			return nil, err
+		}
+		crcArbiters = append(crcArbiters, cr)
+	}
+	return
+}
+
 func (c *arbiters) GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	c.RLock()
 	defer c.RUnlock()
@@ -175,6 +247,27 @@ func (c *arbiters) GetByHeight(height uint32) (crcArbiters [][]byte, normalArbit
 	}
 	height = slot
 	return c.get(height)
+}
+
+func (c *arbiters) GetCompleteCRCArbitersByHeight(height uint32) (crcArbiters [][]byte, err error) {
+	c.RLock()
+	defer c.RUnlock()
+	var pos []uint32
+	if len(c.posCache) == 0 {
+		pos = c.getCurrentPositions()
+		c.posCache = pos
+	} else {
+		pos = c.posCache
+	}
+	slot, err := findSlot(pos, height, c.arbitersCount)
+	if err != nil {
+		return nil, err
+	}
+	if slot == 0 {
+		return c.originArbiters, nil
+	}
+	height = slot
+	return c.getCompleteCRCArbiters(height)
 }
 
 func (c *arbiters) Close() error {
@@ -339,6 +432,19 @@ func getValueBytes(crc [][]byte, nor [][]byte) []byte {
 	})
 	common.WriteUint8(buf, uint8(len(nor)))
 	for _, v := range nor {
+		common.WriteVarBytes(buf, v)
+	}
+
+	return buf.Bytes()
+}
+
+func getCRCArbitersValueBytes(crc [][]byte) []byte {
+	buf := new(bytes.Buffer)
+	sort.Slice(crc, func(i, j int) bool {
+		return bytes.Compare(crc[i], crc[j]) < 0
+	})
+	common.WriteUint8(buf, uint8(len(crc)))
+	for _, v := range crc {
 		common.WriteVarBytes(buf, v)
 	}
 
