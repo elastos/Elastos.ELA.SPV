@@ -131,11 +131,15 @@ type QueItem struct {
 
 type Arbiters interface {
 	database.DB
-	Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte) error
-	BatchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte, batch *leveldb.Batch) error
+	Put(height uint32, crcArbiters [][]byte, normalArbiters [][]byte,
+		completeCRCArbiters [][]byte) error
+	BatchPut(height uint32, crcArbiters [][]byte, normalArbiters [][]byte,
+		completeCRCArbiters [][]byte, batch *leveldb.Batch) error
 	Get() (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 	GetNext() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error)
+	GetNextCompleteCRCArbiters() (workingHeight uint32, crcArbiters [][]byte, err error)
 	GetByHeight(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
+	GetCompleteCRCArbitersByHeight(height uint32) (crcArbiters [][]byte, err error)
 	BatchPutRevertTransaction(batch *leveldb.Batch, workingHeight uint32, mode byte) error
 	GetConsensusAlgorithmByHeight(height uint32) (byte, error)
 	GetRevertInfo() []RevertInfo

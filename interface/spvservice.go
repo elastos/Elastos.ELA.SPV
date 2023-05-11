@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/elastos/Elastos.ELA/core"
 	"io"
 	"math"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.SPV/util"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core"
 	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"github.com/elastos/Elastos.ELA/core/types"
 	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
@@ -227,9 +227,19 @@ func (s *spvservice) GetArbiters(height uint32) (crcArbiters [][]byte, normalArb
 	return s.db.Arbiters().GetByHeight(height)
 }
 
+// Get complete crc arbiters according to height
+func (s *spvservice) GetCompleteCRCArbiters(height uint32) (crcArbiters [][]byte, err error) {
+	return s.db.Arbiters().GetCompleteCRCArbitersByHeight(height)
+}
+
 // Get next turn arbiters according to height
 func (s *spvservice) GetNextArbiters() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error) {
 	return s.db.Arbiters().GetNext()
+}
+
+// Get next turn arbiters according to height
+func (s *spvservice) GetNextCompleteCRCArbiters() (workingHeight uint32, crcArbiters [][]byte, err error) {
+	return s.db.Arbiters().GetNextCompleteCRCArbiters()
 }
 
 // Get consensus algorithm by height.
@@ -305,7 +315,8 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		nextTurnDposInfo := tx.Payload().(*payload.NextTurnDPOSInfo)
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.Arbiters().BatchPut(nextTurnDposInfo.WorkingHeight,
-			nextTurnDposInfo.CRPublicKeys, nextTurnDposInfo.DPOSPublicKeys, nakedBatch)
+			nextTurnDposInfo.CRPublicKeys, nextTurnDposInfo.DPOSPublicKeys,
+			nextTurnDposInfo.CompleteCRPublicKeys, nakedBatch)
 		if err != nil {
 			return false, err
 		}

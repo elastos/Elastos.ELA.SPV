@@ -60,13 +60,13 @@ func TestArbiters(t *testing.T) {
 		nor, _ := hex.DecodeString(v)
 		normal = append(normal, nor)
 	}
-	err = arbiters.Put(402, crcs, normal)
+	err = arbiters.Put(402, crcs, normal, crcs)
 	if err != nil {
 		t.Errorf("put arbiter error %s", err.Error())
 		return
 	}
 
-	err = arbiters.Put(403, crcs, normal)
+	err = arbiters.Put(403, crcs, normal, crcs)
 	if err != nil {
 		t.Errorf("put arbiter error %s", err.Error())
 		return
@@ -90,7 +90,7 @@ func TestArbiters(t *testing.T) {
 	append1, _ := hex.DecodeString("02ECF46B0DE8435DD4E4A93341763F3DDBF12C106C0BE00363B114EFE90F5D2F58")
 	crcs = append(crcs, append1)
 
-	err = arbiters.Put(405, crcs, normal)
+	err = arbiters.Put(405, crcs, normal, crcs)
 	if err != nil {
 		t.Errorf("put arbiter error %s", err.Error())
 		return
@@ -109,7 +109,7 @@ func TestArbiters(t *testing.T) {
 		return
 	}
 
-	err = arbiters.Put(407, crcs, normal)
+	err = arbiters.Put(407, crcs, normal, crcs)
 	if err != nil {
 		t.Errorf("put arbiter error %s", err.Error())
 		return
@@ -128,7 +128,7 @@ func TestArbiters(t *testing.T) {
 		return
 	}
 
-	err = arbiters.Put(407, crcscopy, normal)
+	err = arbiters.Put(407, crcscopy, normal, crcscopy)
 	if err != nil {
 		t.Errorf("put arbiter error %s", err.Error())
 		return
@@ -136,7 +136,7 @@ func TestArbiters(t *testing.T) {
 
 	// batch put
 	batch := new(leveldb.Batch)
-	err = arbiters.BatchPut(602, crcs, normal, batch)
+	err = arbiters.BatchPut(602, crcs, normal, crcs, batch)
 	if err != nil {
 		t.Errorf("put arbiter error %s", err.Error())
 		return
@@ -171,9 +171,6 @@ func TestArbiters(t *testing.T) {
 		t.Errorf("crc arbiter can not be found")
 		return
 	}
-
-
-
 
 }
 

@@ -75,8 +75,14 @@ type SPVService interface {
 	// GetArbiters Get arbiters according to height.
 	GetArbiters(height uint32) (crcArbiters [][]byte, normalArbiters [][]byte, err error)
 
+	// Get complete crc arbiters according to height
+	GetCompleteCRCArbiters(height uint32) (crcArbiters [][]byte, err error)
+
 	// Get next turn arbiters.
 	GetNextArbiters() (workingHeight uint32, crcArbiters [][]byte, normalArbiters [][]byte, err error)
+
+	// Get next turn arbiters according to height
+	GetNextCompleteCRCArbiters() (workingHeight uint32, crcArbiters [][]byte, err error)
 
 	// Get consensus algorithm by height.
 	GetConsensusAlgorithm(height uint32) (ConsensusAlgorithm, error)
