@@ -225,7 +225,6 @@ func (b *BlockChain) LatestBlockLocator() []*common.Uint256 {
 	for {
 		if start >= 9 {
 			step *= 2
-			start = 0
 		}
 		hash := parent.Hash()
 		ret = append(ret, &hash)
