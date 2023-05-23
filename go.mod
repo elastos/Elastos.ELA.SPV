@@ -7,7 +7,7 @@ require (
 	github.com/cevaris/ordered_map v0.0.0-20220813181356-34664b69742b
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/elastos/Elastos.ELA v0.9.8-0.20230511043919-55eac2b35e46
+	github.com/elastos/Elastos.ELA v0.9.8-0.20230523092959-29d3562f44e2
 	github.com/go-echarts/go-echarts/v2 v2.2.3 // indirect
 	github.com/go-echarts/statsview v0.3.4 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
