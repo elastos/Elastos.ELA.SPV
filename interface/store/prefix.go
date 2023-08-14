@@ -43,4 +43,7 @@ var (
 	BKTReceivedCustomID     = []byte("rccid")
 	BKTChangeCustomIDFee    = []byte("ccidf")
 	BKTCustomIDFeePositions = []byte("cidfps")
+
+	BKTChangeESCMinGasPrice    = []byte("cescmgp")
+	BKTESCMinGasPricePositions = []byte("escmgpps")
 )

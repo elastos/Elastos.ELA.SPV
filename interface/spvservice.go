@@ -263,7 +263,12 @@ func (s *spvservice) GetRateOfCustomIDFee(height uint32) (common.Fixed64, error)
 	return s.db.CID().GetCustomIDFeeRate(height)
 }
 
-//GetReturnSideChainDepositCoin query tx data by tx hash
+// Get ESC min gas price.
+func (s *spvservice) GetESCMinGasPrice(height uint32) (common.Fixed64, error) {
+	return s.db.CID().GetESCMinGasPrice(height)
+}
+
+// GetReturnSideChainDepositCoin query tx data by tx hash
 func (s *spvservice) HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool {
 	return s.db.CID().HaveRetSideChainDepositCoinTx(txHash)
 }
@@ -354,6 +359,12 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 				p.RateOfCustomIDFee, p.Hash(tx.PayloadVersion()), p.EIDEffectiveHeight, nakedBatch); err != nil {
 				return false, err
 			}
+		case payload.ChangeESCMinGasPrice:
+			if err := s.db.CID().BatchPutControversialSetESCMinGasPrice(
+				p.ChangeSideChainMinGasPriceInfo.MinGasPrice, p.Hash(tx.PayloadVersion()),
+				p.ChangeSideChainMinGasPriceInfo.EffectiveHeight, nakedBatch); err != nil {
+				return false, err
+			}
 		}
 	case elacommon.ProposalResult:
 		p, ok := tx.Payload().(*payload.RecordProposalResult)
@@ -361,7 +372,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 			return false, errors.New("invalid custom ID result tx")
 		}
 		nakedBatch := batch.GetNakedBatch()
-		err := s.db.CID().BatchPutCustomIDProposalResults(p.ProposalResults, height, nakedBatch)
+		err := s.db.CID().BatchPutSideChainRelatedProposalResults(p.ProposalResults, height, nakedBatch)
 		if err != nil {
 			return false, err
 		}

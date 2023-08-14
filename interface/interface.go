@@ -101,6 +101,9 @@ type SPVService interface {
 	// GetRateOfCustomIDFee query current rate of custom ID fee.
 	GetRateOfCustomIDFee(height uint32) (common.Fixed64, error)
 
+	// GetESCMinGasPrice query ESC min gas price fro CR proposal.
+	GetESCMinGasPrice(height uint32) (common.Fixed64, error)
+
 	// GetBlockListener Get block listener
 	GetBlockListener() BlockListener
 
