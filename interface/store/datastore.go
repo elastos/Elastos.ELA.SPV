@@ -20,9 +20,11 @@ type dataStore struct {
 	que   *que
 	ars   *arbiters
 	cid   *customID
+	sid   *sideChain
 }
 
-////this spv GenesisBlockAddress
+// //this spv GenesisBlockAddress
+//
 //	GenesisBlockAddress    string
 func NewDataStore(dataDir string, originArbiters [][]byte, arbitersCount int, GenesisBlockAddress string) (*dataStore, error) {
 	db, err := leveldb.OpenFile(filepath.Join(dataDir, "store"), nil)
@@ -52,6 +54,7 @@ func NewDataStore(dataDir string, originArbiters [][]byte, arbitersCount int, Ge
 		que:   NewQue(db),
 		ars:   NewArbiters(db, originArbiters, arbitersCount),
 		cid:   NewCustomID(db, GenesisBlockAddress),
+		sid:   NewSideChain(db),
 	}, nil
 }
 
@@ -81,6 +84,10 @@ func (d *dataStore) Arbiters() Arbiters {
 
 func (d *dataStore) CID() CustomID {
 	return d.cid
+}
+
+func (d *dataStore) SID() SideChain {
+	return d.sid
 }
 
 func (d *dataStore) Batch() DataBatch {

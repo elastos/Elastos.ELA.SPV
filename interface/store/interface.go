@@ -27,6 +27,7 @@ type DataStore interface {
 	Que() Que
 	Arbiters() Arbiters
 	CID() CustomID
+	SID() SideChain
 	Batch() DataBatch
 }
 
@@ -172,6 +173,20 @@ type CustomID interface {
 	BatchDeleteControversialChangeCustomIDFee(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
+	PutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32) error
+	BatchPutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
+
+	GetReservedCustomIDs(height uint32, info []RevertInfo) (map[string]struct{}, error)
+	GetReceivedCustomIDs(height uint32, info []RevertInfo) (map[string]common.Uint168, error)
+	GetCustomIDFeeRate(height uint32) (common.Fixed64, error)
+
+	//Is this RetSideChainDepositCoin tx exist
+	HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool
+}
+
+type SideChain interface {
+	database.DB
+
 	BatchPutControversialSetESCMinGasPrice(rate common.Fixed64,
 		proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error
 	BatchDeleteControversialChangeESCMinGasPrice(
@@ -180,12 +195,5 @@ type CustomID interface {
 	PutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32) error
 	BatchPutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
 
-	GetReservedCustomIDs(height uint32, info []RevertInfo) (map[string]struct{}, error)
-	GetReceivedCustomIDs(height uint32, info []RevertInfo) (map[string]common.Uint168, error)
-	GetCustomIDFeeRate(height uint32) (common.Fixed64, error)
-
-	GetESCMinGasPrice(height uint32) (common.Fixed64, error)
-
-	//Is this RetSideChainDepositCoin tx exist
-	HaveRetSideChainDepositCoinTx(txHash common.Uint256) bool
+	GetESCMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error)
 }

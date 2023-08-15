@@ -265,7 +265,7 @@ func (s *spvservice) GetRateOfCustomIDFee(height uint32) (common.Fixed64, error)
 
 // Get ESC min gas price.
 func (s *spvservice) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
-	return s.db.CID().GetESCMinGasPrice(height)
+	return s.db.SID().GetESCMinGasPrice(height, genesisBlockHash)
 }
 
 // GetReturnSideChainDepositCoin query tx data by tx hash
@@ -360,7 +360,7 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 				return false, err
 			}
 		case payload.ChangeESCMinGasPrice:
-			if err := s.db.CID().BatchPutControversialSetESCMinGasPrice(
+			if err := s.db.SID().BatchPutControversialSetESCMinGasPrice(
 				p.ChangeSideChainMinGasPriceInfo.MinGasPrice, p.Hash(tx.PayloadVersion()),
 				p.ChangeSideChainMinGasPriceInfo.EffectiveHeight, nakedBatch); err != nil {
 				return false, err
@@ -373,6 +373,11 @@ func (s *spvservice) putTx(batch store.DataBatch, utx util.Transaction,
 		}
 		nakedBatch := batch.GetNakedBatch()
 		err := s.db.CID().BatchPutSideChainRelatedProposalResults(p.ProposalResults, height, nakedBatch)
+		if err != nil {
+			return false, err
+		}
+
+		err = s.db.SID().BatchPutSideChainRelatedProposalResults(p.ProposalResults, height, nakedBatch)
 		if err != nil {
 			return false, err
 		}
