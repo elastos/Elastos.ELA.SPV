@@ -264,7 +264,7 @@ func (s *spvservice) GetRateOfCustomIDFee(height uint32) (common.Fixed64, error)
 }
 
 // Get ESC min gas price.
-func (s *spvservice) GetESCMinGasPrice(height uint32) (common.Fixed64, error) {
+func (s *spvservice) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
 	return s.db.CID().GetESCMinGasPrice(height)
 }
 
