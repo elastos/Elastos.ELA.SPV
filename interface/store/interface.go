@@ -187,13 +187,13 @@ type CustomID interface {
 type SideChain interface {
 	database.DB
 
-	BatchPutControversialSetESCMinGasPrice(rate common.Fixed64,
+	BatchPutControversialSetMinGasPrice(genesisBlockHash common.Uint256, gasPrice common.Fixed64,
 		proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error
-	BatchDeleteControversialChangeESCMinGasPrice(
+	BatchDeleteControversialChangeMinGasPrice(
 		proposalHash common.Uint256, batch *leveldb.Batch)
 
 	PutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32) error
 	BatchPutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
 
-	GetESCMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error)
+	GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error)
 }

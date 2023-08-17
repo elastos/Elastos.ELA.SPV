@@ -44,6 +44,6 @@ var (
 	BKTChangeCustomIDFee    = []byte("ccidf")
 	BKTCustomIDFeePositions = []byte("cidfps")
 
-	BKTChangeESCMinGasPrice    = []byte("cescmgp")
-	BKTESCMinGasPricePositions = []byte("escmgpps")
+	BKTChangeSideChainMinGasPrice    = []byte("cscmgp")
+	BKTSideChainMinGasPricePositions = []byte("scmgpps")
 )

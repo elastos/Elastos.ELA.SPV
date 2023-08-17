@@ -18,32 +18,35 @@ var _ SideChain = (*sideChain)(nil)
 type sideChain struct {
 	batch
 	sync.RWMutex
-	db                *leveldb.DB
-	b                 *leveldb.Batch
-	escMinFeePosCache []uint32
+	db               *leveldb.DB
+	b                *leveldb.Batch
+	gasPricePosCache map[common.Uint256][]uint32
 }
 
 func NewSideChain(db *leveldb.DB) *sideChain {
 	return &sideChain{
-		db: db,
-		b:  new(leveldb.Batch),
+		db:               db,
+		b:                new(leveldb.Batch),
+		gasPricePosCache: make(map[common.Uint256][]uint32, 0),
 	}
 }
 
-func (c *sideChain) BatchPutControversialSetESCMinGasPrice(gasPrice common.Fixed64,
+func (c *sideChain) BatchPutControversialSetMinGasPrice(
+	genesisBlockHash common.Uint256, gasPrice common.Fixed64,
 	proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
 
-	return c.batchPutChangeESCMinGasPrice(gasPrice, workingHeight, proposalHash, batch)
+	return c.batchPutChangeMinGasPrice(
+		genesisBlockHash, gasPrice, workingHeight, proposalHash, batch)
 }
 
-func (c *sideChain) BatchDeleteControversialChangeESCMinGasPrice(
+func (c *sideChain) BatchDeleteControversialChangeMinGasPrice(
 	proposalHash common.Uint256, batch *leveldb.Batch) {
 	c.Lock()
 	defer c.Unlock()
 
-	batch.Delete(toKey(BKTChangeESCMinGasPrice, proposalHash.Bytes()...))
+	batch.Delete(toKey(BKTChangeSideChainMinGasPrice, proposalHash.Bytes()...))
 }
 
 func (c *sideChain) PutSideChainRelatedProposalResults(
@@ -70,13 +73,15 @@ func (c *sideChain) batchPutSideChainRelatedProposalResults(
 	// add new reserved custom ID into cache.
 	for _, r := range results {
 		switch r.ProposalType {
-		case payload.ChangeESCMinGasPrice:
+		case payload.ChangeSideChainMinGasPrice:
 			if r.Result == true {
-				minFee, workingHeight, err := c.getControversialESCMinFeeByProposalHash(r.ProposalHash)
+				genesisBlockHash, gasPrice, workingHeight, err :=
+					c.getControversialMinGasPriceByProposalHash(r.ProposalHash)
 				if err != nil {
 					return err
 				}
-				if err := c.batchPuESCMinGasPrice(batch, minFee, workingHeight); err != nil {
+				if err := c.batchPuMinGasPrice(batch, genesisBlockHash,
+					gasPrice, workingHeight); err != nil {
 					return err
 				}
 			} else {
@@ -88,29 +93,34 @@ func (c *sideChain) batchPutSideChainRelatedProposalResults(
 	return nil
 }
 
-func (c *sideChain) batchPutChangeESCMinGasPrice(gasPrice common.Fixed64,
-	workingHeight uint32, proposalHash common.Uint256, batch *leveldb.Batch) error {
+func (c *sideChain) batchPutChangeMinGasPrice(
+	genesisBlockHash common.Uint256, gasPrice common.Fixed64, workingHeight uint32,
+	proposalHash common.Uint256, batch *leveldb.Batch) error {
 	w := new(bytes.Buffer)
+	if err := genesisBlockHash.Serialize(w); err != nil {
+		return err
+	}
 	if err := gasPrice.Serialize(w); err != nil {
 		return err
 	}
 	if err := common.WriteUint32(w, workingHeight); err != nil {
 		return err
 	}
-	batch.Put(toKey(BKTChangeESCMinGasPrice, proposalHash.Bytes()...), w.Bytes())
+	batch.Put(toKey(BKTChangeSideChainMinGasPrice, proposalHash.Bytes()...), w.Bytes())
 	return nil
 }
 
-func (c *sideChain) getCurrentESCMinGasPricePositions() []uint32 {
-	pos, err := c.db.Get(BKTESCMinGasPricePositions, nil)
+func (c *sideChain) getCurrentMinGasPricePositions(genesisHash common.Uint256) []uint32 {
+	pos, err := c.db.Get(toKey(BKTSideChainMinGasPricePositions, genesisHash.Bytes()...), nil)
 	if err == nil {
 		return bytesToUint32Array(pos)
 	}
 	return nil
 }
 
-func (c *sideChain) batchPuESCMinGasPrice(batch *leveldb.Batch, minFee common.Fixed64, workingHeight uint32) error {
-	posCache := c.getCurrentESCMinGasPricePositions()
+func (c *sideChain) batchPuMinGasPrice(batch *leveldb.Batch,
+	genesisHash common.Uint256, gasPrice common.Fixed64, workingHeight uint32) error {
+	posCache := c.getCurrentMinGasPricePositions(genesisHash)
 	newPosCache := make([]uint32, 0)
 	for _, p := range posCache {
 		if p < workingHeight {
@@ -118,93 +128,99 @@ func (c *sideChain) batchPuESCMinGasPrice(batch *leveldb.Batch, minFee common.Fi
 		}
 	}
 	newPosCache = append(newPosCache, workingHeight)
-	c.escMinFeePosCache = newPosCache
-	batch.Put(BKTESCMinGasPricePositions, uint32ArrayToBytes(c.escMinFeePosCache))
+	c.gasPricePosCache[genesisHash] = newPosCache
+	batch.Put(toKey(BKTSideChainMinGasPricePositions, genesisHash.Bytes()...),
+		uint32ArrayToBytes(c.gasPricePosCache[genesisHash]))
 
 	buf := new(bytes.Buffer)
 	if err := common.WriteUint32(buf, workingHeight); err != nil {
 		return err
 	}
-	key := toKey(BKTChangeESCMinGasPrice, buf.Bytes()...)
+	key := toKey(toKey(BKTChangeSideChainMinGasPrice, genesisHash.Bytes()...), buf.Bytes()...)
 	w := new(bytes.Buffer)
-	if err := minFee.Serialize(w); err != nil {
+	if err := gasPrice.Serialize(w); err != nil {
 		return err
 	}
 	batch.Put(key, w.Bytes())
 	return nil
 }
 
-func (c *sideChain) GetESCMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
+func (c *sideChain) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
 	c.RLock()
 	defer c.RUnlock()
-	return c.getEscMinGasPrice(height, genesisBlockHash)
+	return c.getMinGasPrice(height, genesisBlockHash)
 }
 
-func (c *sideChain) getEscMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
-	workingHeight, err := c.findESCMinFeeWorkingHeightByCurrentHeight(height)
+func (c *sideChain) getMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
+	workingHeight, err := c.findGasPriceWorkingHeightByCurrentHeight(height, genesisBlockHash)
 	if err != nil {
 		return 0, err
 	}
 
-	return c.getControversialESCMinGasPriceByHeight(workingHeight)
+	return c.getControversialMinGasPriceByHeight(workingHeight)
 }
 
-func (c *sideChain) findESCMinFeeWorkingHeightByCurrentHeight(height uint32) (uint32, error) {
+func (c *sideChain) findGasPriceWorkingHeightByCurrentHeight(
+	height uint32, genesisBlockHash common.Uint256) (uint32, error) {
 	var pos []uint32
-	if len(c.escMinFeePosCache) == 0 {
-		pos = c.getCurrentESCMinGasPricePositions()
-		c.escMinFeePosCache = pos
+	if _, ok := c.gasPricePosCache[genesisBlockHash]; !ok {
+		pos = c.getCurrentMinGasPricePositions(genesisBlockHash)
+		c.gasPricePosCache[genesisBlockHash] = pos
 	} else {
-		pos = c.escMinFeePosCache
+		pos = c.gasPricePosCache[genesisBlockHash]
 	}
 
-	if len(c.escMinFeePosCache) == 0 {
-		return 0, errors.New("have no esc min fee from main chain proposal")
+	if len(pos) == 0 {
+		return 0, errors.New("have no min fee from main chain proposal")
 	}
 
-	for i := len(c.escMinFeePosCache) - 1; i >= 0; i-- {
-		if height > c.escMinFeePosCache[i] {
-			return c.escMinFeePosCache[i], nil
+	for i := len(pos) - 1; i >= 0; i-- {
+		if height > pos[i] {
+			return pos[i], nil
 		}
 	}
 
 	return 0, nil
 }
 
-func (c *sideChain) getControversialESCMinFeeByProposalHash(proposalHash common.Uint256) (common.Fixed64, uint32, error) {
+func (c *sideChain) getControversialMinGasPriceByProposalHash(
+	proposalHash common.Uint256) (genesisBlockHash common.Uint256,
+	gasPrice common.Fixed64, workingHeight uint32, err error) {
 	var val []byte
-	val, err := c.db.Get(toKey(BKTChangeESCMinGasPrice, proposalHash.Bytes()...), nil)
+	val, err = c.db.Get(toKey(BKTChangeSideChainMinGasPrice, proposalHash.Bytes()...), nil)
 	if err != nil {
-		return 0, 0, err
+		return
 	}
 	r := bytes.NewReader(val)
-	var minFee common.Fixed64
-	if err := minFee.Deserialize(r); err != nil {
-		return 0, 0, err
+	if err = genesisBlockHash.Deserialize(r); err != nil {
+		return
 	}
-	workingHeight, err := common.ReadUint32(r)
-	if err != nil {
-		return 0, 0, err
+
+	if err = gasPrice.Deserialize(r); err != nil {
+		return
 	}
-	return minFee, workingHeight, nil
+
+	workingHeight, err = common.ReadUint32(r)
+
+	return
 }
 
-func (c *sideChain) getControversialESCMinGasPriceByHeight(workingHeight uint32) (common.Fixed64, error) {
+func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (common.Fixed64, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteUint32(buf, workingHeight); err != nil {
 		return 0, err
 	}
 	var val []byte
-	val, err := c.db.Get(toKey(BKTChangeESCMinGasPrice, buf.Bytes()...), nil)
+	val, err := c.db.Get(toKey(BKTChangeSideChainMinGasPrice, buf.Bytes()...), nil)
 	if err != nil {
 		return 0, err
 	}
 	r := bytes.NewReader(val)
-	var minFee common.Fixed64
-	if err := minFee.Deserialize(r); err != nil {
+	var gasPrice common.Fixed64
+	if err := gasPrice.Deserialize(r); err != nil {
 		return 0, err
 	}
-	return minFee, nil
+	return gasPrice, nil
 }
 
 func (c *sideChain) Close() error {
@@ -217,7 +233,7 @@ func (c *sideChain) Clear() error {
 	defer c.Unlock()
 
 	batch := new(leveldb.Batch)
-	it := c.db.NewIterator(util.BytesPrefix(BKTChangeESCMinGasPrice), nil)
+	it := c.db.NewIterator(util.BytesPrefix(BKTChangeSideChainMinGasPrice), nil)
 	defer it.Release()
 	for it.Next() {
 		batch.Delete(it.Key())
