@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/cevaris/ordered_map v0.0.0-20220813181356-34664b69742b
-	github.com/elastos/Elastos.ELA v0.9.8-0.20230815034809-df9a01a40ea0
+	github.com/elastos/Elastos.ELA v0.9.8-0.20230818031133-5cf6cc0b7f2e
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/stretchr/testify v1.7.1
@@ -30,5 +30,3 @@ require (
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/elastos/Elastos.ELA => /Users/jiangzehua/work/elastos/src/github.com/elastos/Elastos.ELA

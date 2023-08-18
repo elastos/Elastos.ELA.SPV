@@ -32,7 +32,7 @@ func NewSideChain(db *leveldb.DB) *sideChain {
 }
 
 func (c *sideChain) BatchPutControversialSetMinGasPrice(
-	genesisBlockHash common.Uint256, gasPrice common.Fixed64,
+	genesisBlockHash common.Uint256, gasPrice uint64,
 	proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
@@ -94,13 +94,13 @@ func (c *sideChain) batchPutSideChainRelatedProposalResults(
 }
 
 func (c *sideChain) batchPutChangeMinGasPrice(
-	genesisBlockHash common.Uint256, gasPrice common.Fixed64, workingHeight uint32,
+	genesisBlockHash common.Uint256, gasPrice uint64, workingHeight uint32,
 	proposalHash common.Uint256, batch *leveldb.Batch) error {
 	w := new(bytes.Buffer)
 	if err := genesisBlockHash.Serialize(w); err != nil {
 		return err
 	}
-	if err := gasPrice.Serialize(w); err != nil {
+	if err := common.WriteUint64(w, gasPrice); err != nil {
 		return err
 	}
 	if err := common.WriteUint32(w, workingHeight); err != nil {
@@ -119,7 +119,7 @@ func (c *sideChain) getCurrentMinGasPricePositions(genesisHash common.Uint256) [
 }
 
 func (c *sideChain) batchPuMinGasPrice(batch *leveldb.Batch,
-	genesisHash common.Uint256, gasPrice common.Fixed64, workingHeight uint32) error {
+	genesisHash common.Uint256, gasPrice uint64, workingHeight uint32) error {
 	posCache := c.getCurrentMinGasPricePositions(genesisHash)
 	newPosCache := make([]uint32, 0)
 	for _, p := range posCache {
@@ -138,20 +138,20 @@ func (c *sideChain) batchPuMinGasPrice(batch *leveldb.Batch,
 	}
 	key := toKey(toKey(BKTChangeSideChainMinGasPrice, genesisHash.Bytes()...), buf.Bytes()...)
 	w := new(bytes.Buffer)
-	if err := gasPrice.Serialize(w); err != nil {
+	if err := common.WriteUint64(w, gasPrice); err != nil {
 		return err
 	}
 	batch.Put(key, w.Bytes())
 	return nil
 }
 
-func (c *sideChain) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
+func (c *sideChain) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (uint64, error) {
 	c.RLock()
 	defer c.RUnlock()
 	return c.getMinGasPrice(height, genesisBlockHash)
 }
 
-func (c *sideChain) getMinGasPrice(height uint32, genesisBlockHash common.Uint256) (common.Fixed64, error) {
+func (c *sideChain) getMinGasPrice(height uint32, genesisBlockHash common.Uint256) (uint64, error) {
 	workingHeight, err := c.findGasPriceWorkingHeightByCurrentHeight(height, genesisBlockHash)
 	if err != nil {
 		return 0, err
@@ -185,7 +185,7 @@ func (c *sideChain) findGasPriceWorkingHeightByCurrentHeight(
 
 func (c *sideChain) getControversialMinGasPriceByProposalHash(
 	proposalHash common.Uint256) (genesisBlockHash common.Uint256,
-	gasPrice common.Fixed64, workingHeight uint32, err error) {
+	gasPrice uint64, workingHeight uint32, err error) {
 	var val []byte
 	val, err = c.db.Get(toKey(BKTChangeSideChainMinGasPrice, proposalHash.Bytes()...), nil)
 	if err != nil {
@@ -196,7 +196,7 @@ func (c *sideChain) getControversialMinGasPriceByProposalHash(
 		return
 	}
 
-	if err = gasPrice.Deserialize(r); err != nil {
+	if gasPrice, err = common.ReadUint64(r); err != nil {
 		return
 	}
 
@@ -205,7 +205,7 @@ func (c *sideChain) getControversialMinGasPriceByProposalHash(
 	return
 }
 
-func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (common.Fixed64, error) {
+func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (uint64, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteUint32(buf, workingHeight); err != nil {
 		return 0, err
@@ -216,8 +216,8 @@ func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (c
 		return 0, err
 	}
 	r := bytes.NewReader(val)
-	var gasPrice common.Fixed64
-	if err := gasPrice.Deserialize(r); err != nil {
+	var gasPrice uint64
+	if gasPrice, err = common.ReadUint64(r); err != nil {
 		return 0, err
 	}
 	return gasPrice, nil
