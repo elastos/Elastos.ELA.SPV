@@ -1,6 +1,7 @@
 package store
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.SPV/database"
@@ -187,7 +188,7 @@ type CustomID interface {
 type SideChain interface {
 	database.DB
 
-	BatchPutControversialSetMinGasPrice(genesisBlockHash common.Uint256, gasPrice uint64,
+	BatchPutControversialSetMinGasPrice(genesisBlockHash common.Uint256, gasPrice *big.Int,
 		proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error
 	BatchDeleteControversialChangeMinGasPrice(
 		proposalHash common.Uint256, batch *leveldb.Batch)
@@ -195,5 +196,5 @@ type SideChain interface {
 	PutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32) error
 	BatchPutSideChainRelatedProposalResults(results []payload.ProposalResult, height uint32, batch *leveldb.Batch) error
 
-	GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (uint64, error)
+	GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (*big.Int, error)
 }

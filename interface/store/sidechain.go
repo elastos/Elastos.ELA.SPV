@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"errors"
+	"math/big"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -32,7 +33,7 @@ func NewSideChain(db *leveldb.DB) *sideChain {
 }
 
 func (c *sideChain) BatchPutControversialSetMinGasPrice(
-	genesisBlockHash common.Uint256, gasPrice uint64,
+	genesisBlockHash common.Uint256, gasPrice *big.Int,
 	proposalHash common.Uint256, workingHeight uint32, batch *leveldb.Batch) error {
 	c.Lock()
 	defer c.Unlock()
@@ -94,13 +95,13 @@ func (c *sideChain) batchPutSideChainRelatedProposalResults(
 }
 
 func (c *sideChain) batchPutChangeMinGasPrice(
-	genesisBlockHash common.Uint256, gasPrice uint64, workingHeight uint32,
+	genesisBlockHash common.Uint256, gasPrice *big.Int, workingHeight uint32,
 	proposalHash common.Uint256, batch *leveldb.Batch) error {
 	w := new(bytes.Buffer)
 	if err := genesisBlockHash.Serialize(w); err != nil {
 		return err
 	}
-	if err := common.WriteUint64(w, gasPrice); err != nil {
+	if err := common.WriteVarBytes(w, gasPrice.Bytes()); err != nil {
 		return err
 	}
 	if err := common.WriteUint32(w, workingHeight); err != nil {
@@ -145,16 +146,16 @@ func (c *sideChain) batchPuMinGasPrice(batch *leveldb.Batch,
 	return nil
 }
 
-func (c *sideChain) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (uint64, error) {
+func (c *sideChain) GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (*big.Int, error) {
 	c.RLock()
 	defer c.RUnlock()
 	return c.getMinGasPrice(height, genesisBlockHash)
 }
 
-func (c *sideChain) getMinGasPrice(height uint32, genesisBlockHash common.Uint256) (uint64, error) {
+func (c *sideChain) getMinGasPrice(height uint32, genesisBlockHash common.Uint256) (*big.Int, error) {
 	workingHeight, err := c.findGasPriceWorkingHeightByCurrentHeight(height, genesisBlockHash)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	return c.getControversialMinGasPriceByHeight(workingHeight)
@@ -205,21 +206,23 @@ func (c *sideChain) getControversialMinGasPriceByProposalHash(
 	return
 }
 
-func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (uint64, error) {
+func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (*big.Int, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteUint32(buf, workingHeight); err != nil {
-		return 0, err
+		return nil, err
 	}
 	var val []byte
 	val, err := c.db.Get(toKey(BKTChangeSideChainMinGasPrice, buf.Bytes()...), nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	r := bytes.NewReader(val)
-	var gasPrice uint64
-	if gasPrice, err = common.ReadUint64(r); err != nil {
-		return 0, err
+	var gasPriceBytes []byte
+	if gasPriceBytes, err = common.ReadVarBytes(r, payload.MaxSideChainGasPriceLength, "gas price"); err != nil {
+		return nil, err
 	}
+	gasPrice := new(big.Int)
+	gasPrice.SetBytes(gasPriceBytes)
 	return gasPrice, nil
 }
 

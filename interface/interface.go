@@ -1,6 +1,8 @@
 package _interface
 
 import (
+	"math/big"
+
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA.SPV/interface/store"
 	"github.com/elastos/Elastos.ELA.SPV/util"
@@ -102,7 +104,7 @@ type SPVService interface {
 	GetRateOfCustomIDFee(height uint32) (common.Fixed64, error)
 
 	// GetMinGasPrice query min gas price from CR proposal.
-	GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (uint64, error)
+	GetMinGasPrice(height uint32, genesisBlockHash common.Uint256) (*big.Int, error)
 
 	// GetBlockListener Get block listener
 	GetBlockListener() BlockListener
