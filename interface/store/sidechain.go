@@ -158,7 +158,7 @@ func (c *sideChain) getMinGasPrice(height uint32, genesisBlockHash common.Uint25
 		return nil, err
 	}
 
-	return c.getControversialMinGasPriceByHeight(workingHeight)
+	return c.getControversialMinGasPriceByHeight(genesisBlockHash, workingHeight)
 }
 
 func (c *sideChain) findGasPriceWorkingHeightByCurrentHeight(
@@ -209,13 +209,13 @@ func (c *sideChain) getControversialMinGasPriceByProposalHash(
 	return
 }
 
-func (c *sideChain) getControversialMinGasPriceByHeight(workingHeight uint32) (*big.Int, error) {
+func (c *sideChain) getControversialMinGasPriceByHeight(genesisHash common.Uint256, workingHeight uint32) (*big.Int, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteUint32(buf, workingHeight); err != nil {
 		return nil, err
 	}
 	var val []byte
-	val, err := c.db.Get(toKey(BKTChangeSideChainMinGasPrice, buf.Bytes()...), nil)
+	val, err := c.db.Get(toKey(toKey(BKTChangeSideChainMinGasPrice, genesisHash.Bytes()...), buf.Bytes()...), nil)
 	if err != nil {
 		return nil, err
 	}
